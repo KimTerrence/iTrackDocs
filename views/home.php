@@ -1,3 +1,23 @@
+<?php if (isset($_GET['error']) && $_GET['error'] === 'access_denied'): ?>
+    <div id="accessDeniedPopup" class="fixed top-10 left-1/2 transform -translate-x-1/2 z-50 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-400 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-4 min-w-[320px] animate-fade-in-down">
+        
+        <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+
+        <div>
+            <h4 class="font-extrabold text-lg">Access Denied</h4>
+            <p class="text-sm font-medium opacity-90">Please log in to view the dashboard.</p>
+        </div>
+
+        <button onclick="document.getElementById('accessDeniedPopup').style.display='none'" class="ml-auto text-red-500 hover:text-red-700 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </div>
+<?php endif; ?>
+
 <div class="animate-fade-in-up">
     
     <section id="home" class="relative pt-20 pb-32 text-center overflow-hidden">
@@ -8,7 +28,7 @@
 
         <div class="relative z-10 max-w-4xl mx-auto px-6">
             <h1 class="text-5xl md:text-7xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-6">
-                Next-Gen <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-indigo-600 dark:from-brand-400 dark:to-indigo-400">Document Tracking</span>
+                Smart Document Coding <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-indigo-600 dark:from-brand-400 dark:to-indigo-400">and Monitoring Platform</span>
             </h1>
             <p class="text-lg md:text-xl text-slate-600 dark:text-slate-400 mb-10 max-w-2xl mx-auto">
                 Securely route, monitor, and manage your enterprise documents in real-time using QR codes and automated workflows.

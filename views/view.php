@@ -1,24 +1,34 @@
 <?php
-// Build the receive URL dynamically based on the current domain
-$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+// 1. Detect Protocol (Now perfectly handles Ngrok's secure tunnels!)
+if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+    $protocol = "https://";
+} else {
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+}
+
+// 2. Detect Domain (Automatically grabs your Ngrok URL!)
 $domain = $_SERVER['HTTP_HOST'];
 
-$receiveUrl = $protocol . "://" . $domain . "/public/index.php?action=scan&tracking_id=" . urlencode($tracking_id);
+// 3. Detect the exact path
+$path = strtok($_SERVER["REQUEST_URI"], '?'); 
 
-// Generate the QR Code URL (Kept small for printing)
+// 4. Build the final universal URL
+$receiveUrl = $protocol . $domain . $path . "?action=scan&tracking_id=" . urlencode($tracking_id);
+
+// Generate the QR Code
 $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . urlencode($receiveUrl);
 ?>
 
-<div class="max-w-5xl mx-auto animate-fade-in-up print:hidden">
+<div class="w-full animate-fade-in-up print:hidden">
     
     <a href="index.php?action=dashboard" class="inline-flex items-center text-sm font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-500 mb-6 transition-colors">
         <svg class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
         Back to Dashboard
     </a>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
         
-        <div class="lg:col-span-2 space-y-6">
+        <div class="xl:col-span-3 space-y-6">
             
             <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-8 shadow-sm">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -31,11 +41,26 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
                     </span>
                 </div>
 
-                <div class="grid grid-cols-2 gap-6 border-t border-slate-100 dark:border-slate-800 pt-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 border-t border-slate-100 dark:border-slate-800 pt-6">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Category</p>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 ring-1 ring-purple-600/20">
+                            <?= htmlspecialchars($document['category'] ?? 'Uncategorized') ?>
+                        </span>
+                    </div>
                     <div>
                         <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Origin</p>
                         <p class="text-slate-900 dark:text-white font-semibold"><?= htmlspecialchars($document['origin']) ?></p>
                     </div>
+                    
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Target Destination</p>
+                        <p class="text-brand-600 dark:text-brand-400 font-bold flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
+                            <?= htmlspecialchars($document['target_department'] ?? 'Not Specified') ?>
+                        </p>
+                    </div>
+
                     <div>
                         <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Current Location</p>
                         <p class="text-slate-900 dark:text-white font-semibold flex items-center gap-2">
@@ -63,7 +88,7 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
                         <?php if ($isImage): ?>
                             <img src="<?= htmlspecialchars($document['file_path']) ?>?v=<?= time() ?>" alt="Scanned Document" class="max-w-full h-auto rounded-xl shadow-sm">
                         <?php elseif ($fileExtension === 'pdf'): ?>
-                            <iframe src="<?= htmlspecialchars($document['file_path']) ?>?v=<?= time() ?>" class="w-full h-[500px] rounded-xl" type="application/pdf"></iframe>
+                            <iframe src="<?= htmlspecialchars($document['file_path']) ?>?v=<?= time() ?>" class="w-full h-[600px] rounded-xl" type="application/pdf"></iframe>
                         <?php else: ?>
                             <div class="py-12 text-center">
                                 <svg class="w-12 h-12 text-slate-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -97,24 +122,50 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
             </div>
         </div>
 
-        <div class="space-y-6">
+        <div class="xl:col-span-1 space-y-6">
             
-            <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 shadow-sm">
-                <h3 class="font-bold text-slate-900 dark:text-white mb-4">Manual Route Update</h3>
-                <form action="index.php?action=mark_received" method="POST" class="space-y-4">
-                    <input type="hidden" name="tracking_id" value="<?= htmlspecialchars($tracking_id) ?>">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">New Location</label>
-                        <input type="text" name="location" placeholder="e.g. HR Department" required 
-                            class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500 transition-all text-slate-900 dark:text-white">
-                    </div>
-                    <button type="submit" class="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 font-bold py-2.5 rounded-xl transition-all text-sm shadow-md">
-                        Mark as Received Here
-                    </button>
-                </form>
-            </div>
+            <?php 
+                $user_dept = $_SESSION['user_department'] ?? '';
+                $user_id = $_SESSION['user_id'] ?? null;
+                $is_sender = ($document['creator_id'] == $user_id);
+                $is_receiver = (
+                    !$is_sender && 
+                    ($user_dept === $document['origin'] || 
+                     $user_dept === $document['current_location'] || 
+                     $user_dept === ($document['target_department'] ?? ''))
+                );
+            ?>
+            
+            <?php if ($is_sender): ?>
+                <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 shadow-sm">
+                    <h3 class="font-bold text-slate-900 dark:text-white mb-2">Manual Route Update</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                        You created this document. Click below to mark it as <strong>returned</strong> to your department 
+                        (<span class="font-bold text-slate-700 dark:text-slate-300"><?= htmlspecialchars($user_dept) ?></span>).
+                    </p>
+                    <form action="index.php?action=mark_returned" method="POST">
+                        <input type="hidden" name="tracking_id" value="<?= htmlspecialchars($tracking_id) ?>">
+                        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl transition-all text-sm shadow-md">
+                            Mark as Returned
+                        </button>
+                    </form>
+                </div>
+            <?php elseif ($is_receiver): ?>
+                <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 shadow-sm">
+                    <h3 class="font-bold text-slate-900 dark:text-white mb-2">Confirm Receipt</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                        This document is for your department. Click below to confirm <strong>receipt</strong> 
+                        at <span class="font-bold text-slate-700 dark:text-slate-300"><?= htmlspecialchars($user_dept) ?></span>.
+                    </p>
+                    <form action="index.php?action=mark_received_dashboard" method="POST">
+                        <input type="hidden" name="tracking_id" value="<?= htmlspecialchars($tracking_id) ?>">
+                        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition-all text-sm shadow-md">
+                            Mark as Received
+                        </button>
+                    </form>
+                </div>
+            <?php endif; ?>
 
-            <!-- NEW: Upload Attachment Form -->
             <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 shadow-sm">
                 <h3 class="font-bold text-slate-900 dark:text-white mb-4">Upload Attachment</h3>
                 <form action="index.php?action=upload_attachment" method="POST" enctype="multipart/form-data" class="space-y-4">
@@ -132,7 +183,6 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
                 </form>
             </div>
 
-            <!-- Quick Actions (Print only now) -->
             <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 shadow-sm">
                 <h3 class="font-bold text-slate-900 dark:text-white mb-4">Quick Actions</h3>
                 <button onclick="window.print()" class="w-full flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-3 rounded-xl transition-all border border-slate-200 dark:border-slate-700">
@@ -151,7 +201,6 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
         <p class="text-lg font-bold text-gray-700">Scan when received</p>
     </div>
 
-    <!-- Scaled Down QR Code -->
     <img src="<?= htmlspecialchars($qrCodeUrl) ?>" class="w-56 h-56 border-4 border-black p-3 mb-6" alt="Tracking QR">
 
     <div class="space-y-2 mt-2">

@@ -10,20 +10,23 @@ class UserController extends Controller {
     // Security Helper: Make sure the user is logged in
     private function requireAuth() {
         if (!isset($_SESSION['user_id'])) {
-            // If they aren't logged in, kick them to the login page
-            header("Location: index.php?action=authenticate");
+            // If they aren't logged in, redirect to home where the login modal will show
+            header("Location: index.php?error=access_denied");
             exit;
         }
     }
     
-    // Security Helper: Only let Admins through
-    private function requireAdmin() {
+    // 🔥 FIXED: Security Helper now allows Admins AND Heads
+    private function requireAdminOrHead() {
         // First, check if they are logged in at all
         $this->requireAuth();
 
-        // Next, check if they are actually an admin
-        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
-            header("Location: index.php?action=dashboard");
+        // Standardize the role to lowercase to prevent case-sensitive typos
+        $role = strtolower($_SESSION['user_role'] ?? '');
+
+        // Next, check if they are an admin or a head. If neither, kick them out!
+        if ($role !== 'admin' && $role !== 'head') {
+            header("Location: index.php?action=dashboard&error=unauthorized");
             exit;
         }
     }
@@ -34,32 +37,67 @@ class UserController extends Controller {
 
     // Load the User Management View
     public function list() {
-        $this->requireAdmin(); 
+        $this->requireAdminOrHead(); // Use the new security check
         
         $db = (new \Config\Database())->getConnection();
-        $users = $db->query("SELECT * FROM users ORDER BY created_at DESC")->fetchAll();
+        
+        $role = strtolower($_SESSION['user_role'] ?? '');
+        $dept = $_SESSION['user_department'] ?? '';
+
+        // 🔥 DATA ISOLATION LOGIC 🔥
+        if ($role === 'admin') {
+            // Admins see everyone in the company
+            $stmt = $db->prepare("SELECT * FROM users ORDER BY created_at DESC");
+        } else {
+            // Department Heads ONLY see users in their specific department
+            $stmt = $db->prepare("SELECT * FROM users WHERE department = :dept ORDER BY created_at DESC");
+            $stmt->bindParam(':dept', $dept);
+        }
+        
+        $stmt->execute();
+        $users = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         
         $this->render('users', ['users' => $users, 'action' => 'users']);
     }
 
     // Handle the Form Submission (The 'C' in MVC)
+   // Handle the Form Submission (The 'C' in MVC)
     public function store() {
-        $this->requireAdmin(); // Hard block non-admins
+        $this->requireAdminOrHead();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = trim($_POST['name'] ?? '');
-            $username = trim($_POST['username'] ?? '');
-            
-            // Set a default password if you didn't add a password input to the modal yet
+            $email = trim($_POST['email'] ?? '');
             $password = $_POST['password'] ?? 'password123'; 
             $role = $_POST['role'] ?? 'staff';
-
-            if (!empty($name) && !empty($username)) {
-                $userModel = new \Models\User();
-                $userModel->create($name, $username, $password, $role);
+                   
+            if (strtolower($_SESSION['user_role'] ?? '') === 'admin') {
+                // If they are an Admin, trust the dropdown from the form
+                $department = trim($_POST['department'] ?? '');
+            } else {
+                // If they are a Head, IGNORE the form and force their own department!
+                $department = $_SESSION['user_department'] ?? '';
             }
 
-            // Redirect back to the user list to refresh the table
+            // Only save if we have the critical data
+            if (!empty($name) && !empty($email) && !empty($department)) {
+                $userModel = new \Models\User();
+                
+                // Check for duplicate email
+                $dbCheck = (new \Config\Database())->getConnection();
+                $existing = $dbCheck->prepare("SELECT id FROM users WHERE email = :email");
+                $existing->execute(['email' => $email]);
+                if ($existing->rowCount() > 0) {
+                    $this->render('users', ['error' => 'Email already exists.', 'users' => (new \Models\User())->getUsers()]);
+                    return;
+                }
+                
+                // Make sure your User Model's create() method accepts 5 parameters!
+                $userModel->create($name, $email, $password, $role, $department);
+                $this->logActivity('user_create', "Created user '$email' with role '$role' in department '$department'.");
+            }
+
+            // Redirect back to the user list
             header("Location: index.php?action=users");
             exit;
         }
@@ -67,18 +105,29 @@ class UserController extends Controller {
 
     // Edit an Existing User
     public function updateUser() {
-        $this->requireAdmin();
+        $this->requireAdminOrHead(); // Protect the update route too!
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user_id = $_POST['user_id'] ?? null;
             $name = trim($_POST['name'] ?? '');
-            $username = trim($_POST['username'] ?? '');
+            $email = trim($_POST['email'] ?? '');
             $role = $_POST['role'] ?? 'staff';
             $password = $_POST['password'] ?? ''; // Might be empty!
 
-            if ($user_id && !empty($name) && !empty($username)) {
+            if ($user_id && !empty($name) && !empty($email)) {
                 $userModel = new \Models\User();
-                $userModel->updateAsAdmin($user_id, $name, $username, $role, $password);
+                
+                // Check for duplicate email (excluding current user)
+                $db = (new \Config\Database())->getConnection();
+                $existing = $db->prepare("SELECT id FROM users WHERE email = :email AND id != :id");
+                $existing->execute(['email' => $email, 'id' => $user_id]);
+                if ($existing->rowCount() > 0) {
+                    $this->render('users', ['error' => 'Email already exists.', 'users' => (new \Models\User())->getUsers()]);
+                    return;
+                }
+                
+                $userModel->updateAsAdmin($user_id, $name, $email, $role, $password);
+                $this->logActivity('user_update', "Updated user ID #$user_id ('$email').");
             }
 
             header("Location: index.php?action=users&success=updated");
@@ -100,6 +149,72 @@ class UserController extends Controller {
         // THE FIX: Use $this->render() instead of require()
         // This wraps your settings.php snippet inside the main layout.php skeleton!
         $this->render('settings', ['user' => $user]);
+    }
+
+    // Block or Unblock a user (replaces Delete)
+    public function blockUser() {
+        $this->requireAdminOrHead();
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $user_id = $_POST['user_id'] ?? null;
+            $action = $_POST['action'] ?? ''; // 'block' or 'unblock'
+
+            if ($user_id && in_array($action, ['block', 'unblock'])) {
+                $status = ($action === 'block') ? 'blocked' : 'active';
+                $userModel = new \Models\User();
+                $userModel->updateStatus($user_id, $status);
+                $this->logActivity('user_' . $status, "Set user ID #$user_id status to '$status'.");
+            }
+
+            header("Location: index.php?action=users");
+            exit;
+        }
+    }
+
+    // Process Password Change from Settings
+    public function updatePassword() {
+        $this->requireAuth();
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $user_id = $_SESSION['user_id'];
+            $current_password = $_POST['current_password'] ?? '';
+            $new_password = $_POST['new_password'] ?? '';
+            $confirm_password = $_POST['confirm_password'] ?? '';
+
+            // Validate
+            if (empty($current_password) || empty($new_password) || empty($confirm_password)) {
+                $this->render('settings', ['error' => 'All password fields are required.', 'user' => (new \Models\User())->findById($user_id)]);
+                return;
+            }
+
+            if ($new_password !== $confirm_password) {
+                $this->render('settings', ['error' => 'New passwords do not match.', 'user' => (new \Models\User())->findById($user_id)]);
+                return;
+            }
+
+            if (strlen($new_password) < 8) {
+                $this->render('settings', ['error' => 'Password must be at least 8 characters.', 'user' => (new \Models\User())->findById($user_id)]);
+                return;
+            }
+
+            // Verify current password
+            $model = new \Models\User();
+            $user = $model->findById($user_id);
+            
+            if (!password_verify($current_password, $user['password'])) {
+                $this->render('settings', ['error' => 'Current password is incorrect.', 'user' => (new \Models\User())->findById($user_id)]);
+                return;
+            }
+
+            // Update password
+            $hashed = password_hash($new_password, PASSWORD_DEFAULT);
+            $db = (new \Config\Database())->getConnection();
+            $stmt = $db->prepare("UPDATE users SET password = :password WHERE id = :id");
+            $stmt->execute(['password' => $hashed, 'id' => $user_id]);
+
+            header("Location: index.php?action=settings&success=1");
+            exit;
+        }
     }
 
     // 2. Process the Form Submission

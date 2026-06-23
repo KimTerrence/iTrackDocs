@@ -1,7 +1,9 @@
 <?php
 // public/index.php
 session_start(); // Always start the session first!
-
+require_once __DIR__ . '/../PHPMailer/src/Exception.php';
+require_once __DIR__ . '/../PHPMailer/src/PHPMailer.php';
+require_once __DIR__ . '/../PHPMailer/src/SMTP.php';
 // 1. Clean Autoloader (No more debug text)
 spl_autoload_register(function ($class) {
     $file = __DIR__ . '/../src/' . str_replace('\\', '/', $class) . '.php';
@@ -25,6 +27,8 @@ if ($action === 'home') {
     (new \Controllers\DocumentController())->dashboard();
 } elseif ($action === 'list') { 
     (new \Controllers\DocumentController())->list();
+} elseif ($action === 'allDocuments') { 
+    (new \Controllers\DocumentController())->allDocuments();
 } elseif ($action === 'create') {
     (new \Controllers\DocumentController())->create();
 } elseif ($action === 'store' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -39,16 +43,16 @@ if ($action === 'home') {
     (new \Controllers\UserController())->store();
 } elseif ($action === 'edit_user' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     (new \Controllers\UserController())->updateUser();
+} elseif ($action === 'block_user' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    (new \Controllers\UserController())->blockUser();
+} elseif ($action === "mark_returned"){
+    (new \Controllers\DocumentController())->markReturned();
 } elseif ($action === 'settings') {
     (new \Controllers\UserController())->settings();
 } elseif ($action === 'update_settings') {
     (new \Controllers\UserController())->updateSettings();
-} elseif ($action === 'track') {
-    if ($tracking_id) {
-        (new \Controllers\DocumentController())->track($tracking_id);
-    } else {
-        (new \Controllers\HomeController())->index();
-    }
+} elseif ($action === 'update_password') {
+    (new \Controllers\UserController())->updatePassword();
 } elseif ($action === 'api_track') {
     // FIXED: Added api_track as an elseif statement!
     (new \Controllers\DocumentController())->apiTrack();
@@ -60,6 +64,12 @@ if ($action === 'home') {
     }
 } elseif ($action === 'mark_received' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     (new \Controllers\DocumentController())->markReceived();
+} elseif ($action === 'mark_received_dashboard' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    (new \Controllers\DocumentController())->markReceivedFromDashboard();
+} elseif ($action === 'logs') {
+    (new \Controllers\DocumentController())->logs();
+} elseif ($action === 'api_search') {
+    (new \Controllers\DocumentController())->apiSearch();
 } else {
     // Fallback for unknown routes
     (new \Controllers\HomeController())->index();

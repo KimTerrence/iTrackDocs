@@ -1,0 +1,3 @@
+composer init --quiet
+composer require phpmailer/phpmailer
+

@@ -16,4 +16,15 @@ protected function render($view, $data = []) {
     $content = ob_get_clean();
     require __DIR__ . "/../../views/layout.php";
 }
+
+protected function logActivity($action, $description) {
+    if (!isset($_SESSION['user_id'])) {
+        return;
+    }
+    $userId = $_SESSION['user_id'] ?? null;
+    $username = $_SESSION['user_name'] ?? 'system';
+    $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+    $model = new \Models\ActivityLog();
+    $model->log($userId, $username, $action, $description, $ip);
+}
 }

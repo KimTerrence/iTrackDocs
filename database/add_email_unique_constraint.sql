@@ -1,0 +1,1 @@
+ALTER TABLE users ADD UNIQUE INDEX unique_email (email);
