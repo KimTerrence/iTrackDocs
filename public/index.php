@@ -66,10 +66,20 @@ if ($action === 'home') {
     (new \Controllers\DocumentController())->markReceived();
 } elseif ($action === 'mark_received_dashboard' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     (new \Controllers\DocumentController())->markReceivedFromDashboard();
+} elseif ($action === 'mark_void' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    (new \Controllers\DocumentController())->markVoid();
 } elseif ($action === 'logs') {
     (new \Controllers\DocumentController())->logs();
 } elseif ($action === 'api_search') {
     (new \Controllers\DocumentController())->apiSearch();
+} elseif ($action === 'api_notifications') {
+    (new \Controllers\NotificationController())->getNotifications();
+} elseif ($action === 'api_notification_count') {
+    (new \Controllers\NotificationController())->getUnreadCount();
+} elseif ($action === 'api_notification_read' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    (new \Controllers\NotificationController())->markAsRead();
+} elseif ($action === 'api_notification_read_all' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    (new \Controllers\NotificationController())->markAllAsRead();
 } else {
     // Fallback for unknown routes
     (new \Controllers\HomeController())->index();

@@ -37,13 +37,9 @@
 
                 <div>
                     <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Department</label>
-                    <select name="department" id="edit_user_department" required onchange="handleEditDepartmentChange()" 
-                        class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm">
-                        <option value="" disabled selected>Select...</option>
-                        <option value="Other">Other</option>
-                    </select>
-                    <input type="text" name="edit_other_department" id="edit_other_department" placeholder="Enter department name" style="display: none;" 
-                        class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm mt-2">
+                    <input type="hidden" name="department" value="CICS">
+                    <input type="text" value="CICS" readonly 
+                        class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 rounded-xl px-4 py-3 cursor-not-allowed font-bold outline-none shadow-sm">
                 </div>
 
                 <div>
@@ -66,73 +62,6 @@
 </div>
 
 <script>
-    let existingDepartmentsEdit = [];
-    
-    <?php
-    $userModel = new \Models\User();
-    $allUsers = $userModel->getUsers();
-    $departments = array();
-    if ($allUsers) {
-        foreach ($allUsers as $u) {
-            if (!empty($u['department']) && !in_array($u['department'], $departments)) {
-                $departments[] = $u['department'];
-            }
-        }
-        sort($departments);
-    }
-    foreach ($departments as $dept) {
-        echo 'existingDepartmentsEdit.push("' . addslashes($dept) . '");' . "\n";
-    }
-    ?>
-    
-    function populateEditDepartments() {
-        const select = document.getElementById('edit_user_department');
-        if (!select) return;
-        
-        // Clear existing options except first and "Other"
-        select.innerHTML = '<option value="" disabled selected>Select...</option><option value="Other">Other</option>';
-        
-        // Add existing departments
-        existingDepartmentsEdit.forEach(function(dept) {
-            const option = document.createElement('option');
-            option.value = dept;
-            option.textContent = dept;
-            select.appendChild(option);
-        });
-    }
-    
-    function handleEditDepartmentChange() {
-        const select = document.getElementById('edit_user_department');
-        const otherField = document.getElementById('edit_other_department');
-        
-        if (select.value === 'Other') {
-            otherField.style.display = 'block';
-            otherField.required = true;
-        } else {
-            otherField.style.display = 'none';
-            otherField.required = false;
-        }
-    }
-    
-    // On form submit, if "Other" is selected, copy the input value to the select
-    document.querySelector('#edit_user_modal form').addEventListener('submit', function(e) {
-        const select = document.getElementById('edit_user_department');
-        const otherField = document.getElementById('edit_other_department');
-        
-        if (select && otherField && select.value === 'Other' && otherField.value.trim()) {
-            // Create a hidden input with the correct department value
-            const hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.name = 'department';
-            hiddenInput.value = otherField.value.trim();
-            
-            // Remove the select's name attribute so it doesn't submit "Other"
-            select.removeAttribute('name');
-            
-            this.appendChild(hiddenInput);
-        }
-    });
-    
     function closeEditUserModal() {
         const modal = document.getElementById('edit_user_modal');
         if(modal) {

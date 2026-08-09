@@ -48,16 +48,8 @@
                         <select name="category" required 
                             class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all appearance-none cursor-pointer">
                             <option value="" disabled selected>Select category...</option>
-                            <option value="Memorandum">Memorandum</option>
-                            <option value="Letter">Letter</option>
-                            <option value="Report">Report</option>
-                            <option value="Resolution">Resolution</option>
-                            <option value="Order">Order</option>
-                            <option value="Notice">Notice</option>
-                            <option value="Certificate">Certificate</option>
-                            <option value="Contract">Contract</option>
-                            <option value="Form">Form</option>
-                            <option value="Other">Other</option>
+                            <option value="IC">IC - Internal Communication</option>
+                            <option value="EC">EC - External Communication</option>
                         </select>
                         <svg class="w-5 h-5 text-slate-400 dark:text-slate-500 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -99,26 +91,25 @@
                     </p>
                 </div>
 
-                <!-- Target Department -->
+                <!-- Target Destination (CICS Only) -->
                 <div>
                     <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                         Target Destination
                     </label>
                     <div class="relative">
-                        <select name="target_department" required 
-                            class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all appearance-none cursor-pointer">
-                            <option value="" disabled selected>Select destination...</option>
-                            <option value="CICS">CICS</option>
-                            <option value="CHM">CHM</option>
-                            <option value="CBEA">CBEA</option>
-                            <option value="IT">IT</option>
-                            <option value="ADMIN">ADMIN</option>
-                            <option value="CEO">CEO</option>
-                        </select>
-                        <svg class="w-5 h-5 text-slate-400 dark:text-slate-500 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        <input type="hidden" name="target_department" value="CICS">
+                        <input type="text" value="CICS" readonly 
+                            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded-xl px-4 py-3 cursor-not-allowed outline-none font-semibold pl-10">
+                        <svg class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                         </svg>
                     </div>
+                    <p class="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        Locked to CICS - internal system destination only.
+                    </p>
                 </div>
             </div>
         </div>

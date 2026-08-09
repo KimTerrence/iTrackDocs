@@ -34,20 +34,46 @@ function getStatusBadge($status) {
         <?php endif; ?>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl ring-1 ring-slate-200 dark:ring-slate-800 shadow-sm flex flex-col md:flex-row gap-4 shrink-0">
+    <form method="GET" action="index.php" id="userFilterForm" class="bg-white dark:bg-slate-900 p-4 rounded-2xl ring-1 ring-slate-200 dark:ring-slate-800 shadow-sm flex flex-col md:flex-row gap-4 shrink-0">
+        <input type="hidden" name="action" value="users">
         <div class="relative flex-1">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
-            <input type="text" placeholder="Search by name or email..." class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-slate-900 dark:text-white placeholder-slate-400 transition-shadow">
+            <input type="text" name="search" id="userSearch" placeholder="Search by name or email..." value="<?= htmlspecialchars($search ?? '') ?>"
+                   class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-slate-900 dark:text-white placeholder-slate-400 transition-shadow">
         </div>
-        <select class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand-500 transition-shadow w-full md:w-48">
-            <option>All Roles</option>
-            <option>Administrators</option>
-            <option>Department Heads</option>
-            <option>Staff</option>
+        <select name="role" id="userRole" class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand-500 transition-shadow w-full md:w-48">
+            <option value="">All Roles</option>
+            <option value="admin" <?= ($currentRole ?? '') === 'admin' ? 'selected' : '' ?>>Administrators</option>
+            <option value="head" <?= ($currentRole ?? '') === 'head' ? 'selected' : '' ?>>Department Heads</option>
+            <option value="staff" <?= ($currentRole ?? '') === 'staff' ? 'selected' : '' ?>>Staff</option>
         </select>
-    </div>
+    </form>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('userFilterForm');
+        const inputs = form.querySelectorAll('input, select');
+        let debounceTimer;
+
+        function submitForm() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function() {
+                form.submit();
+            }, 400);
+        }
+
+        inputs.forEach(function(input) {
+            if (input.type === 'text') {
+                input.addEventListener('input', submitForm);
+            }
+            if (input.tagName === 'SELECT') {
+                input.addEventListener('change', submitForm);
+            }
+        });
+    });
+    </script>
 
     <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl overflow-hidden shadow-sm flex flex-col flex-1">
         <div class="flex-1 overflow-y-auto">
@@ -150,43 +176,8 @@ function getStatusBadge($status) {
                 document.getElementById('edit_user_name').value = userData.name;
                 // Username removed - email is used for login
                 document.getElementById('edit_user_role').value = userData.role;
-                
-                // Populate departments and set the user's department
-                populateEditDepartments();
-                const deptSelect = document.getElementById('edit_user_department');
-                const otherField = document.getElementById('edit_other_department');
-                
-                if (userData.department) {
-                    // Check if department exists in the dropdown
-                    const exists = existingDepartmentsEdit.includes(userData.department);
-                    if (exists) {
-                        deptSelect.value = userData.department;
-                        otherField.style.display = 'none';
-                        otherField.required = false;
-                    } else {
-                        // Department doesn't exist, select "Other" and show input
-                        deptSelect.value = 'Other';
-                        otherField.value = userData.department;
-                        otherField.style.display = 'block';
-                        otherField.required = true;
-                    }
-                } else {
-                    deptSelect.value = '';
-                    otherField.style.display = 'none';
-                    otherField.required = false;
-                }
-                
                 editModal.classList.remove('hidden');
                 editModal.classList.add('flex');
-            }
-        }
-
-        function closeEditUserModal() {
-            const editModal = document.getElementById('edit_user_modal');
-            if(editModal) {
-                editModal.classList.add('hidden');
-                editModal.classList.remove('flex');
-                document.getElementById('edit_other_department').style.display = 'none';
             }
         }
     </script>

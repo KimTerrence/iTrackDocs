@@ -36,7 +36,14 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
                         <span class="font-mono text-brand-600 dark:text-brand-400 font-bold px-3 py-1 bg-brand-50 dark:bg-brand-500/10 rounded-lg text-sm"><?= htmlspecialchars($tracking_id) ?></span>
                         <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white mt-2"><?= htmlspecialchars($document['title']) ?></h1>
                     </div>
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold uppercase tracking-wider <?= strtolower($document['status']) === 'approved' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20' ?>">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold uppercase tracking-wider 
+                        <?php 
+                            $s = strtolower($document['status']);
+                            if (in_array($s, ['approved', 'received', 'completed', 'returned'])) echo 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20';
+                            elseif ($s === 'void') echo 'bg-red-50 text-red-700 ring-1 ring-red-600/20';
+                            elseif ($s === 'routing') echo 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/20';
+                            else echo 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20';
+                        ?>">
                         <?= htmlspecialchars($document['status']) ?>
                     </span>
                 </div>
@@ -45,7 +52,12 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
                     <div>
                         <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Category</p>
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 ring-1 ring-purple-600/20">
-                            <?= htmlspecialchars($document['category'] ?? 'Uncategorized') ?>
+                            <?php 
+                                $cat = $document['category'] ?? 'Uncategorized';
+                                if ($cat === 'IC') echo 'IC - Internal Communication';
+                                elseif ($cat === 'EC') echo 'EC - External Communication';
+                                else echo htmlspecialchars($cat);
+                            ?>
                         </span>
                     </div>
                     <div>
@@ -145,7 +157,7 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
                     </p>
                     <form action="index.php?action=mark_returned" method="POST">
                         <input type="hidden" name="tracking_id" value="<?= htmlspecialchars($tracking_id) ?>">
-                        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl transition-all text-sm shadow-md">
+                        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition-all text-sm shadow-md">
                             Mark as Returned
                         </button>
                     </form>
@@ -164,6 +176,21 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
                         </button>
                     </form>
                 </div>
+            <?php endif; ?>
+
+            <?php if ($is_sender || $is_receiver): ?>
+            <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 shadow-sm">
+                <h3 class="font-bold text-slate-900 dark:text-white mb-2">Void Document</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                    Mark this document as <strong>void</strong>. This action cannot be undone easily.
+                </p>
+                <form action="index.php?action=mark_void" method="POST" onsubmit="return confirm('Are you sure you want to mark this document as VOID?');">
+                    <input type="hidden" name="tracking_id" value="<?= htmlspecialchars($tracking_id) ?>">
+                    <button type="submit" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl transition-all text-sm shadow-md">
+                        Mark as Void
+                    </button>
+                </form>
+            </div>
             <?php endif; ?>
 
             <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 shadow-sm">

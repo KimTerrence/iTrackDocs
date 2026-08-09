@@ -20,6 +20,9 @@
             $returnedDocs++;
         } elseif ($status === 'archived') {
             $archivedDocs++;
+        } elseif ($status === 'void') {
+            // Void docs are excluded from active counters
+            // (They still get added to recent activity below)
         } else {
             // It is Pending or Routing
             $pendingDocs++;
@@ -62,8 +65,9 @@
     // Helper function for dynamic status badge colors
     function getStatusBadge($status) {
         $status = strtolower($status);
-        if (in_array($status, ['approved', 'received', 'completed'])) return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 ring-1 ring-emerald-600/20';
+        if (in_array($status, ['approved', 'received', 'completed', 'returned'])) return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 ring-1 ring-emerald-600/20';
         if ($status === 'archived') return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 ring-1 ring-slate-500/20';
+        if ($status === 'void') return 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 ring-1 ring-red-600/20';
         if ($status === 'routing') return 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 ring-1 ring-blue-600/20';
         // Default (Pending)
         return 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 ring-1 ring-amber-600/20';
@@ -177,7 +181,12 @@
                                     </td>
                                     <td class="whitespace-nowrap px-3 py-4 text-sm">
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 ring-1 ring-purple-600/20">
-                                            <?= htmlspecialchars($doc['category'] ?? 'Uncategorized') ?>
+                                            <?php 
+                                                $cat = $doc['category'] ?? 'Uncategorized';
+                                                if ($cat === 'IC') echo 'IC - Internal Communication';
+                                                elseif ($cat === 'EC') echo 'EC - External Communication';
+                                                else echo htmlspecialchars($cat);
+                                            ?>
                                         </span>
                                     </td>
                                     <td class="whitespace-nowrap px-3 py-4 text-sm">

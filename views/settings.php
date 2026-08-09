@@ -59,8 +59,9 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
                             <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Department</label>
-                            <input type="text" name="department" value="<?= htmlspecialchars($user['department'] ?? '') ?>" required 
-                                class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500 outline-none transition-shadow shadow-sm">
+                            <input type="text" value="CICS" readonly 
+                                class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 rounded-xl px-4 py-3 cursor-not-allowed font-bold outline-none shadow-sm">
+                            <input type="hidden" name="department" value="CICS">
                         </div>
 
                         <div>

@@ -42,22 +42,45 @@ class UserController extends Controller {
         $db = (new \Config\Database())->getConnection();
         
         $role = strtolower($_SESSION['user_role'] ?? '');
-        $dept = $_SESSION['user_department'] ?? '';
+        
+        // Grab filter parameters
+        $search = trim($_GET['search'] ?? '');
+        $roleFilter = trim($_GET['role'] ?? '');
 
-        // 🔥 DATA ISOLATION LOGIC 🔥
-        if ($role === 'admin') {
-            // Admins see everyone in the company
-            $stmt = $db->prepare("SELECT * FROM users ORDER BY created_at DESC");
-        } else {
-            // Department Heads ONLY see users in their specific department
-            $stmt = $db->prepare("SELECT * FROM users WHERE department = :dept ORDER BY created_at DESC");
-            $stmt->bindParam(':dept', $dept);
+        // Build the query dynamically
+        // 🔥 CICS ONLY: All users belong to CICS
+        $whereClause = "WHERE department = 'CICS'";
+        $params = [];
+        
+        // Apply search filter
+        if (!empty($search)) {
+            $whereClause .= " AND (name LIKE :search OR email LIKE :search)";
+            $params[':search'] = '%' . $search . '%';
         }
         
+        // Apply role filter
+        if (!empty($roleFilter)) {
+            $whereClause .= " AND LOWER(role) = :role";
+            $params[':role'] = strtolower($roleFilter);
+        }
+        
+        $query = "SELECT * FROM users " . $whereClause . " ORDER BY created_at DESC";
+        $stmt = $db->prepare($query);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val);
+        }
         $stmt->execute();
         $users = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         
-        $this->render('users', ['users' => $users, 'action' => 'users']);
+        // Normalize role for dropdown comparison
+        $currentRole = $roleFilter;
+        
+        $this->render('users', [
+            'users' => $users,
+            'action' => 'users',
+            'search' => $search,
+            'currentRole' => $currentRole
+        ]);
     }
 
     // Handle the Form Submission (The 'C' in MVC)
@@ -71,13 +94,8 @@ class UserController extends Controller {
             $password = $_POST['password'] ?? 'password123'; 
             $role = $_POST['role'] ?? 'staff';
                    
-            if (strtolower($_SESSION['user_role'] ?? '') === 'admin') {
-                // If they are an Admin, trust the dropdown from the form
-                $department = trim($_POST['department'] ?? '');
-            } else {
-                // If they are a Head, IGNORE the form and force their own department!
-                $department = $_SESSION['user_department'] ?? '';
-            }
+            // 🔥 CICS ONLY: All users belong to CICS
+            $department = 'CICS';
 
             // Only save if we have the critical data
             if (!empty($name) && !empty($email) && !empty($department)) {
@@ -126,7 +144,8 @@ class UserController extends Controller {
                     return;
                 }
                 
-                $userModel->updateAsAdmin($user_id, $name, $email, $role, $password);
+                // 🔥 CICS ONLY: Update user with CICS department
+                $userModel->updateAsAdmin($user_id, $name, $email, $role, $password, 'CICS');
                 $this->logActivity('user_update', "Updated user ID #$user_id ('$email').");
             }
 
@@ -241,6 +260,9 @@ class UserController extends Controller {
                 return;
             }
 
+            // 🔥 CICS ONLY: Force department to CICS
+            $department = 'CICS';
+            
             // Update the Database
             $model = new \Models\User();
             $model->updateProfile($user_id, $name, $email, $department);

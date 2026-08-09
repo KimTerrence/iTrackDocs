@@ -19,7 +19,8 @@ class AuthController extends Controller {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_name'] = $user['name'];
                 $_SESSION['user_role'] = $user['role'];
-                $_SESSION['user_department'] = $user['department'];
+                // 🔥 CICS ONLY: Force department to CICS
+                $_SESSION['user_department'] = 'CICS';
                 $this->logActivity('login', "User '$email' logged in.");
                 header("Location: index.php?action=dashboard");
                 exit;

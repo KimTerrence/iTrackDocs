@@ -2,13 +2,31 @@
 // Helper function for dynamic status badge colors (same as Dashboard)
 function getStatusBadge($status) {
     $status = strtolower($status ?? 'pending');
-    if (in_array($status, ['approved', 'received', 'completed'])) return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 ring-1 ring-emerald-600/20';
+    if (in_array($status, ['approved', 'received', 'completed', 'returned'])) return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 ring-1 ring-emerald-600/20';
     if ($status === 'archived') return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 ring-1 ring-slate-500/20';
+    if ($status === 'void') return 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 ring-1 ring-red-600/20';
     if ($status === 'routing') return 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 ring-1 ring-blue-600/20';
     return 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 ring-1 ring-amber-600/20';
 }
-?>
 
+// Helper to build query string while preserving filters
+function filterQueryString($extra = []) {
+    $params = [];
+    if (!empty($_GET['search'])) $params['search'] = $_GET['search'];
+    if (!empty($_GET['status'])) $params['status'] = $_GET['status'];
+    if (!empty($_GET['category'])) $params['category'] = $_GET['category'];
+    if (!empty($_GET['department'])) $params['department'] = $_GET['department'];
+    $params = array_merge($params, $extra);
+    return http_build_query($params);
+}
+
+// Get current filter values
+$current_search = $_GET['search'] ?? '';
+$current_status = $_GET['status'] ?? '';
+$current_category = $_GET['category'] ?? '';
+$current_department = $_GET['department'] ?? '';
+$base_action = $action ?? 'list';
+?>
 <div class="animate-fade-in-up space-y-6">
     
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl ring-1 ring-slate-200 dark:ring-slate-800 shadow-sm">
@@ -22,44 +40,62 @@ function getStatusBadge($status) {
         </a>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl ring-1 ring-slate-200 dark:ring-slate-800 shadow-sm grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div class="md:col-span-1 relative">
+    <form method="GET" action="index.php" id="filterForm" class="bg-white dark:bg-slate-900 p-4 rounded-2xl ring-1 ring-slate-200 dark:ring-slate-800 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4">
+        <input type="hidden" name="action" value="<?= htmlspecialchars($base_action) ?>">
+        <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
-            <input type="text" placeholder="Search tracking ID or subject..." class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-slate-900 dark:text-white placeholder-slate-400 transition-shadow">
+            <input type="text" name="search" id="filterSearch" placeholder="Search tracking ID or subject..." value="<?= htmlspecialchars($current_search) ?>"
+                   class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none text-slate-900 dark:text-white placeholder-slate-400 transition-shadow">
         </div>
-        <select class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand-500 transition-shadow">
-            <option>All Statuses</option>
-            <option>Routing</option>
-            <option>Received</option>
-            <option>Approved</option>
-            <option>Returned</option>
-            <option>Archived</option>
+        <select name="status" id="filterStatus" class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand-500 transition-shadow">
+            <option value="">All Statuses</option>
+            <option value="Routing" <?= $current_status === 'Routing' ? 'selected' : '' ?>>Routing</option>
+            <option value="Received" <?= $current_status === 'Received' ? 'selected' : '' ?>>Received</option>
+            <option value="Approved" <?= $current_status === 'Approved' ? 'selected' : '' ?>>Approved</option>
+            <option value="Returned" <?= $current_status === 'Returned' ? 'selected' : '' ?>>Returned</option>
+            <option value="Archived" <?= $current_status === 'Archived' ? 'selected' : '' ?>>Archived</option>
         </select>
-        <select class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand-500 transition-shadow">
-            <option>All Categories</option>
-            <option>Memorandum</option>
-            <option>Letter</option>
-            <option>Report</option>
-            <option>Resolution</option>
-            <option>Order</option>
-            <option>Notice</option>
-            <option>Certificate</option>
-            <option>Contract</option>
-            <option>Form</option>
-            <option>Other</option>
+        <select name="category" id="filterCategory" class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand-500 transition-shadow">
+            <option value="">All Categories</option>
+            <option value="IC" <?= $current_category === 'IC' ? 'selected' : '' ?>>IC - Internal Communication</option>
+            <option value="EC" <?= $current_category === 'EC' ? 'selected' : '' ?>>EC - External Communication</option>
         </select>
-        <select class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand-500 transition-shadow">
-            <option>All Departments</option>
-            <option>Human Resources</option>
-            <option>Finance</option>
-            <option>IT Department</option>
+        <select name="department" id="filterDepartment" class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand-500 transition-shadow">
+            <option value="">All Departments</option>
+            <option value="CICS" <?= $current_department === 'CICS' ? 'selected' : '' ?>>CICS</option>
         </select>
-        <div class="flex gap-2">
-            <button class="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-xl text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm border border-slate-200 dark:border-slate-700">Filter Results</button>
-        </div>
-    </div>
+    </form>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('filterForm');
+        const inputs = form.querySelectorAll('input, select');
+        let debounceTimer;
+
+        function submitForm() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function() {
+                // Reset to page 1 when filters change
+                const pInput = form.querySelector('input[name="p"]');
+                if (pInput) pInput.remove();
+                form.submit();
+            }, 400); // 400ms debounce for typing
+        }
+
+        inputs.forEach(function(input) {
+            // For text inputs, listen to input event (fires on each keystroke)
+            if (input.type === 'text') {
+                input.addEventListener('input', submitForm);
+            }
+            // For select dropdowns, listen to change event
+            if (input.tagName === 'SELECT') {
+                input.addEventListener('change', submitForm);
+            }
+        });
+    });
+    </script>
 
     <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl overflow-hidden shadow-sm flex flex-col">
         <div class="overflow-x-auto flex-1">
@@ -104,7 +140,12 @@ function getStatusBadge($status) {
                             
                             <td class="px-3 py-4 text-sm">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 ring-1 ring-purple-600/20">
-                                    <?= htmlspecialchars($doc['category'] ?? 'Uncategorized') ?>
+                                    <?php 
+                                        $cat = $doc['category'] ?? 'Uncategorized';
+                                        if ($cat === 'IC') echo 'IC - Internal Communication';
+                                        elseif ($cat === 'EC') echo 'EC - External Communication';
+                                        else echo htmlspecialchars($cat);
+                                    ?>
                                 </span>
                             </td>
                             
@@ -142,21 +183,21 @@ function getStatusBadge($status) {
             </p>
             
             <div class="flex gap-2">
-                <a href="index.php?action=list&p=<?= max(1, $pagination['current'] - 1) ?>" 
+                <a href="index.php?action=<?= htmlspecialchars($base_action) ?>&p=<?= max(1, $pagination['current'] - 1) ?>&<?= filterQueryString() ?>" 
                 class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition-colors shadow-sm <?= $pagination['current'] <= 1 ? 'opacity-50 pointer-events-none' : '' ?>">
                     Prev
                 </a>
                 
                 <div class="hidden sm:flex gap-1">
                     <?php for ($i = 1; $i <= $pagination['pages']; $i++): ?>
-                        <a href="index.php?action=list&p=<?= $i ?>" 
+                        <a href="index.php?action=<?= htmlspecialchars($base_action) ?>&p=<?= $i ?>&<?= filterQueryString() ?>" 
                         class="px-3.5 py-1.5 rounded-lg text-sm font-bold transition-colors shadow-sm <?= $i == $pagination['current'] ? 'bg-brand-600 text-white ring-1 ring-brand-600' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800' ?>">
                         <?= $i ?>
                         </a>
                     <?php endfor; ?>
                 </div>
 
-                <a href="index.php?action=list&p=<?= min($pagination['pages'], $pagination['current'] + 1) ?>" 
+                <a href="index.php?action=<?= htmlspecialchars($base_action) ?>&p=<?= min($pagination['pages'], $pagination['current'] + 1) ?>&<?= filterQueryString() ?>" 
                 class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition-colors shadow-sm <?= $pagination['current'] >= $pagination['pages'] ? 'opacity-50 pointer-events-none' : '' ?>">
                     Next
                 </a>

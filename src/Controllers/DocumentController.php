@@ -14,17 +14,34 @@ class DocumentController extends Controller {
         }
     }
     
+    // Helper to fire a notification
+    private function notify($userId, $type, $title, $message, $trackingId = null) {
+        $model = new \Models\Notification();
+        $model->create($userId, $type, $title, $message, $trackingId);
+    }
+
+    // Helper to notify an entire department
+    private function notifyDepartment($department, $type, $title, $message, $trackingId = null, $excludeUserId = null) {
+        $model = new \Models\Notification();
+        $model->createForDepartment($department, $type, $title, $message, $trackingId, $excludeUserId);
+    }
+
     // 1. Show the Dashboard
     public function dashboard() {
         $this->requireAuth();
         
-        // Grab the user's department from their login session
+        // Grab the user's department and role from their login session
         $user_dept = $_SESSION['user_department'] ?? '';
+        $user_role = strtolower($_SESSION['user_role'] ?? '');
         
         $model = new \Models\Document();
         
-        // Only fetch documents that belong in their department
-        $documents = $model->getRelevantToDepartment($user_dept);
+        // Admin sees ALL documents; regular users see only their department's documents
+        if ($user_role === 'admin') {
+            $documents = $model->getAll();
+        } else {
+            $documents = $model->getRelevantToDepartment($user_dept);
+        }
         
         $this->render('dashboard', ['documents' => $documents]);
     }
@@ -44,11 +61,19 @@ class DocumentController extends Controller {
             $title = trim($_POST['title'] ?? '');
             $category = trim($_POST['category'] ?? '');
             
-            // 🔥 SECURE: Ignore the HTML form entirely and grab the Origin straight from the session!
-            $origin = $_SESSION['user_department'] ?? 'Unknown'; 
+            // 🔥 CICS ONLY: Force origin to CICS
+            $origin = 'CICS';
             
-            // 🔥 NEW: Capture the target department from the dropdown menu
-            $target_department = trim($_POST['target_department'] ?? '');
+            // 🔥 CICS ONLY: Target department is always CICS
+            $target_department = 'CICS';
+            
+            // 🔥 CICS ONLY: Validate category server-side
+            if (!in_array($category, ['IC', 'EC'])) {
+                die("<div style='padding:30px; background:#fef08a; color:#854d0e; border: 2px solid #facc15; border-radius:12px; font-family:sans-serif; max-width: 600px; margin: 50px auto;'>
+                        <h2 style='margin-top:0;'>⚠️ Invalid Category!</h2>
+                        <p>Only 'IC' (Internal Communication) and 'EC' (External Communication) categories are allowed.</p>
+                     </div>");
+            }
             
             $file_path = null; 
 
@@ -85,6 +110,11 @@ class DocumentController extends Controller {
                 // 🔥 UPDATED: Passing category and target_department exactly where the Model expects it!
                 $tracking_id = $model->create($title, $category, $origin, $target_department, $file_path, $_SESSION['user_id']);
                 $this->logActivity('document_create', "Created document '$title' ($tracking_id) targeting '$target_department'.");
+                
+                // 🔔 Notify the target department that a new document is on its way
+                $this->notifyDepartment($target_department, 'info', 'New Document Incoming', 
+                    "A new document '$title' ($tracking_id) has been routed to your department from $origin.",
+                    $tracking_id, $_SESSION['user_id']);
                 
                 // If successful, go to the view page!
                 header("Location: index.php?action=view&tracking_id=" . $tracking_id);
@@ -150,11 +180,17 @@ class DocumentController extends Controller {
             $model->addHistory($id, $location, "Received at " . $location);
             $model->updateStatus($id, 'Received');
             $this->logActivity('document_receive', "Document $id received at '$location'.");
-            // 2. Fetch the document details
-            $document = $model->findByTrackingId($id);
             
-            // 3. Fetch the SPECIFIC Creator's Email (🔥 UPDATED 🔥)
+            // 2. Fetch the document details for notifications
+            $document = $model->findByTrackingId($id);
             $creator_email = $model->getCreatorEmail($id);
+            
+            // 🔔 Notify the document creator
+            if ($document) {
+                $this->notify($document['creator_id'], 'success', 'Document Received', 
+                    "Your document '{$document['title']}' ($id) has been received at $location.",
+                    $id);
+            }
             
             // 4. Send Email Notification
             if ($document && $creator_email) {
@@ -189,14 +225,14 @@ class DocumentController extends Controller {
                     $mail->SMTPAuth   = true;
                     
                     // 👉 REPLACE THESE TWO LINES WITH YOUR DETAILS 👈
-                    $mail->Username   = 'quineskimterrence@gmail.com'; 
-                    $mail->Password   = 'ajofwgqqnbomfanh'; 
+                    $mail->Username   = 'itrackdocs@gmail.com'; 
+                    $mail->Password   = 'smqfsnfjcmokzixx'; 
                     
                     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                     $mail->Port       = 587;
 
                     // Recipients
-                    $mail->setFrom('quineskmterrence@gmail.com', 'iTrackDocs Notification');
+                    $mail->setFrom('itrackdocs@gmail.com', 'iTrackDocs Notification');
                     $mail->addAddress($creator_email); // Sends to the document creator
 
                     // Content
@@ -240,8 +276,13 @@ class DocumentController extends Controller {
             $model->updateStatus($id, 'Returned');
             $this->logActivity('document_return', "Document $id returned to '$location'.");
 
-            // 2. Optional: You can copy-paste your PHPMailer email code here 
-            // if you want the creator to be emailed when it gets returned!
+            // 🔔 Notify the origin department that the document has been returned
+            $document = $model->findByTrackingId($id);
+            if ($document) {
+                $this->notify($document['creator_id'], 'warning', 'Document Returned', 
+                    "Your document '{$document['title']}' ($id) has been returned to $location.",
+                    $id);
+            }
         }
         
         // Redirect back to the document view page
@@ -264,6 +305,14 @@ class DocumentController extends Controller {
             $model->addHistory($id, $location, "Document Received at " . $location);
             $model->updateStatus($id, 'Received');
             $this->logActivity('document_receive', "Document $id received at '$location'.");
+
+            // 🔔 Notify the document creator
+            $document = $model->findByTrackingId($id);
+            if ($document && $document['creator_id']) {
+                $this->notify($document['creator_id'], 'success', 'Document Received', 
+                    "Your document '{$document['title']}' ($id) has been received at $location.",
+                    $id);
+            }
 
             // 2. Email the document creator
             $creator_email = $model->getCreatorEmail($id);
@@ -319,6 +368,35 @@ class DocumentController extends Controller {
         exit;
     }
 
+    // Process Mark as Void
+    public function markVoid() {
+        $this->requireAuth();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { exit; }
+        
+        $id = $_POST['tracking_id'] ?? null;
+        
+        if ($id) {
+            $model = new \Models\Document();
+            
+            // 1. Update history and status
+            $model->addHistory($id, $_SESSION['user_department'] ?? 'Unknown', "Document marked as VOID");
+            $model->updateStatus($id, 'Void');
+            $this->logActivity('document_void', "Document $id marked as void.");
+            
+            // 🔔 Notify the document creator
+            $document = $model->findByTrackingId($id);
+            if ($document && $document['creator_id']) {
+                $this->notify($document['creator_id'], 'warning', 'Document Voided', 
+                    "Your document '{$document['title']}' ($id) has been marked as void.",
+                    $id);
+            }
+        }
+        
+        // Redirect back to the document view page
+        header("Location: index.php?action=view&tracking_id=" . urlencode($id));
+        exit;
+    }
+
     // 8. Document List (User's department only)
     public function list() {
         $this->requireAuth();
@@ -326,8 +404,23 @@ class DocumentController extends Controller {
         $user_dept = $_SESSION['user_department'] ?? '';
         $page = isset($_GET['p']) ? (int)$_GET['p'] : 1;
         
+        // Grab filter parameters
+        $filters = [
+            'search' => $_GET['search'] ?? '',
+            'status' => $_GET['status'] ?? '',
+            'category' => $_GET['category'] ?? '',
+            'department' => $_GET['department'] ?? ''
+        ];
+        
+        // Clean empty filters
+        $filters = array_filter($filters, function($v) { return $v !== ''; });
+        
         $model = new \Models\Document();
-        $result = $model->getPaginatedForDepartment($user_dept, $page, 10);
+        
+        // Get departments for the filter dropdown
+        $deptStmt = $model->getDepartments();
+        
+        $result = $model->getPaginatedForDepartment($user_dept, $page, 10, $filters);
         
         $this->render('documents', [
             'documents' => $result['data'],
@@ -336,7 +429,9 @@ class DocumentController extends Controller {
                 'pages' => $result['pages'],
                 'current' => $result['current']
             ],
-            'action' => 'list'
+            'action' => 'list',
+            'filters' => $filters,
+            'departments' => $deptStmt
         ]);
     }
 
@@ -354,8 +449,23 @@ class DocumentController extends Controller {
         
         $page = isset($_GET['p']) ? (int)$_GET['p'] : 1;
         
+        // Grab filter parameters
+        $filters = [
+            'search' => $_GET['search'] ?? '',
+            'status' => $_GET['status'] ?? '',
+            'category' => $_GET['category'] ?? '',
+            'department' => $_GET['department'] ?? ''
+        ];
+        
+        // Clean empty filters
+        $filters = array_filter($filters, function($v) { return $v !== ''; });
+        
         $model = new \Models\Document();
-        $result = $model->getPaginated($page, 10);
+        
+        // Get departments for the filter dropdown
+        $deptStmt = $model->getDepartments();
+        
+        $result = $model->getPaginatedWithFilters($page, 10, $filters);
         
         $this->render('documents', [
             'documents' => $result['data'],
@@ -364,7 +474,9 @@ class DocumentController extends Controller {
                 'pages' => $result['pages'],
                 'current' => $result['current']
             ],
-            'action' => 'allDocuments'
+            'action' => 'allDocuments',
+            'filters' => $filters,
+            'departments' => $deptStmt
         ]);
     }
 

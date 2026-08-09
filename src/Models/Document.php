@@ -14,7 +14,11 @@ class Document {
     }
 
     public function getAll() {
-        $query = "SELECT * FROM documents ORDER BY created_at DESC";
+        // 🔥 CICS ONLY: Filter to only CICS documents with IC/EC categories
+        $query = "SELECT * FROM documents 
+                  WHERE category IN ('IC', 'EC')
+                  AND (origin = 'CICS' OR current_location = 'CICS' OR target_department = 'CICS')
+                  ORDER BY created_at DESC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         
@@ -54,6 +58,14 @@ class Document {
     }
 
     public function create($title, $category, $origin, $target_department, $file_path = null, $creator_id = null) {
+        
+        // 🔥 CICS ONLY: Force target department to CICS
+        $target_department = 'CICS';
+        
+        // 🔥 CICS ONLY: Validate category is IC/EC only
+        if (!in_array($category, ['IC', 'EC'])) {
+            throw new \Exception("Invalid category. Only 'IC' (Internal Communication) and 'EC' (External Communication) are allowed.");
+        }
         
         $year = date('y');  
         $month = date('m'); 
@@ -138,13 +150,24 @@ class Document {
         return true;
     }
 
+    public function getDepartments() {
+        // 🔥 CICS ONLY: Only CICS department exists
+        return ['CICS'];
+    }
+
     public function getPaginated($page = 1, $limit = 10) {
         $offset = ($page - 1) * $limit;
         
-        $stmt = $this->conn->query("SELECT COUNT(*) FROM documents");
+        // 🔥 CICS ONLY: Filter to CICS + IC/EC
+        $stmt = $this->conn->query("SELECT COUNT(*) FROM documents 
+                                    WHERE category IN ('IC', 'EC')
+                                    AND (origin = 'CICS' OR current_location = 'CICS' OR target_department = 'CICS')");
         $total = $stmt->fetchColumn();
         
-        $query = "SELECT * FROM documents ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+        $query = "SELECT * FROM documents 
+                  WHERE category IN ('IC', 'EC')
+                  AND (origin = 'CICS' OR current_location = 'CICS' OR target_department = 'CICS')
+                  ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->conn->prepare($query);
         $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
@@ -205,15 +228,13 @@ class Document {
     }
 
     public function getRelevantToDepartment($department) {
-        // 🔥 UPDATED to include the target_department
+        // 🔥 CICS ONLY: Filter to CICS + IC/EC
         $query = "SELECT * FROM documents 
-                  WHERE origin = :dept 
-                  OR current_location = :dept 
-                  OR target_department = :dept
+                  WHERE category IN ('IC', 'EC')
+                  AND (origin = 'CICS' OR current_location = 'CICS' OR target_department = 'CICS')
                   ORDER BY created_at DESC";
                   
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':dept', $department);
         $stmt->execute();
         
         $documents = [];
@@ -224,13 +245,16 @@ class Document {
     }
 
     public function search($keyword) {
+        // 🔥 CICS ONLY: Restrict search to CICS + IC/EC
         $query = "SELECT * FROM documents 
-                  WHERE tracking_id LIKE :keyword 
+                  WHERE (tracking_id LIKE :keyword 
                   OR title LIKE :keyword 
                   OR origin LIKE :keyword 
                   OR target_department LIKE :keyword 
                   OR current_location LIKE :keyword
-                  OR category LIKE :keyword
+                  OR category LIKE :keyword)
+                  AND category IN ('IC', 'EC')
+                  AND (origin = 'CICS' OR current_location = 'CICS' OR target_department = 'CICS')
                   ORDER BY created_at DESC LIMIT 10";
         $stmt = $this->conn->prepare($query);
         $searchTerm = '%' . $keyword . '%';
@@ -244,22 +268,117 @@ class Document {
         return $docs;
     }
 
-    public function getPaginatedForDepartment($department, $page = 1, $limit = 10) {
+    public function getPaginatedForDepartment($department, $page = 1, $limit = 10, $filters = []) {
         $offset = ($page - 1) * $limit;
         
-        // 🔥 UPDATED: Count Query
-        $countQuery = "SELECT COUNT(*) FROM documents WHERE origin = :dept OR current_location = :dept OR target_department = :dept";
+        // 🔥 CICS ONLY: Always filter to CICS + IC/EC
+        $whereClause = "WHERE (origin = 'CICS' OR current_location = 'CICS' OR target_department = 'CICS')
+                        AND category IN ('IC', 'EC')";
+        $params = [];
+        
+        // Apply search filter
+        if (!empty($filters['search'])) {
+            $whereClause .= " AND (tracking_id LIKE :search OR title LIKE :search)";
+            $params[':search'] = '%' . $filters['search'] . '%';
+        }
+        
+        // Apply status filter
+        if (!empty($filters['status'])) {
+            $whereClause .= " AND status = :status";
+            $params[':status'] = $filters['status'];
+        }
+        
+        // Apply category filter
+        if (!empty($filters['category'])) {
+            $whereClause .= " AND category = :category";
+            $params[':category'] = $filters['category'];
+        }
+        
+        // Apply origin/department filter
+        if (!empty($filters['department'])) {
+            $whereClause .= " AND (origin = :dept_filter OR target_department = :dept_filter OR current_location = :dept_filter)";
+            $params[':dept_filter'] = $filters['department'];
+        }
+        
+        // Count Query
+        $countQuery = "SELECT COUNT(*) FROM documents " . $whereClause;
         $countStmt = $this->conn->prepare($countQuery);
-        $countStmt->bindParam(':dept', $department);
+        foreach ($params as $key => $val) {
+            $countStmt->bindValue($key, $val);
+        }
         $countStmt->execute();
         $total = $countStmt->fetchColumn();
         
-        // 🔥 UPDATED: Data Query
-        $query = "SELECT * FROM documents 
-                  WHERE origin = :dept OR current_location = :dept OR target_department = :dept
-                  ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+        // Data Query
+        $query = "SELECT * FROM documents " . $whereClause . " ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':dept', $department);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val);
+        }
+        $stmt->bindValue(':limit', (int)$limit, \PDO::PARAM_INT);
+        $stmt->bindValue(':offset', (int)$offset, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $docs = [];
+        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            $docs[$row['tracking_id']] = $row;
+        }
+        
+        return [
+            'data' => $docs,
+            'total' => $total,
+            'pages' => ceil($total / $limit),
+            'current' => $page
+        ];
+    }
+
+    public function getPaginatedWithFilters($page = 1, $limit = 10, $filters = []) {
+        $offset = ($page - 1) * $limit;
+        
+        // 🔥 CICS ONLY: Always filter to CICS + IC/EC
+        $whereClause = "WHERE (origin = 'CICS' OR current_location = 'CICS' OR target_department = 'CICS')
+                        AND category IN ('IC', 'EC')";
+        $params = [];
+        
+        // Apply search filter
+        if (!empty($filters['search'])) {
+            $whereClause .= " AND (tracking_id LIKE :search OR title LIKE :search)";
+            $params[':search'] = '%' . $filters['search'] . '%';
+        }
+        
+        // Apply status filter
+        if (!empty($filters['status'])) {
+            $whereClause .= " AND status = :status";
+            $params[':status'] = $filters['status'];
+        }
+        
+        // Apply category filter
+        if (!empty($filters['category'])) {
+            $whereClause .= " AND category = :category";
+            $params[':category'] = $filters['category'];
+        }
+        
+        // Apply origin/department filter
+        if (!empty($filters['department'])) {
+            $whereClause .= " AND (origin = :dept_filter OR target_department = :dept_filter OR current_location = :dept_filter)";
+            $params[':dept_filter'] = $filters['department'];
+        }
+        
+        // Count Query
+        $countQuery = "SELECT COUNT(*) FROM documents " . $whereClause;
+        $countStmt = $this->conn->prepare($countQuery);
+        foreach ($params as $key => $val) {
+            $countStmt->bindValue($key, $val);
+        }
+        $countStmt->execute();
+        $total = $countStmt->fetchColumn();
+        
+        // Data Query
+        $query = "SELECT * FROM documents " . $whereClause . " ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+        $stmt = $this->conn->prepare($query);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val);
+        }
         $stmt->bindValue(':limit', (int)$limit, \PDO::PARAM_INT);
         $stmt->bindValue(':offset', (int)$offset, \PDO::PARAM_INT);
         $stmt->execute();

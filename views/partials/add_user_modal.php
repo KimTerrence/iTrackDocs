@@ -43,16 +43,9 @@
 
                 <div>
                     <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Department</label>
-                    <?php if (strtolower($_SESSION['user_role'] ?? '') === 'admin'): ?>
-                        <select name="department" id="user_department" required onchange="handleDepartmentChange()" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all shadow-sm cursor-pointer">
-                            <option value="" disabled selected>Select...</option>
-                            <option value="Other">Other</option>
-                        </select>
-                        <input type="text" name="department" id="other_department" placeholder="Enter department name" style="display: none;" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all shadow-sm mt-2">
-                    <?php else: ?>
-                        <input type="text" name="department" value="<?= htmlspecialchars($_SESSION['user_department'] ?? '') ?>" readonly 
-                            class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 rounded-xl px-4 py-3 cursor-not-allowed font-bold outline-none shadow-sm">
-                    <?php endif; ?>
+                    <input type="hidden" name="department" value="CICS">
+                    <input type="text" value="CICS" readonly 
+                        class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 rounded-xl px-4 py-3 cursor-not-allowed font-bold outline-none shadow-sm">
                 </div>
                 </div>
             </div>
@@ -67,79 +60,12 @@
 
 <script>
     const userModal = document.getElementById('user-modal');
-    let existingDepartments = [];
-    
-    <?php
-    $userModel = new \Models\User();
-    $allUsers = $userModel->getUsers();
-    $departments = array();
-    if ($allUsers) {
-        foreach ($allUsers as $u) {
-            if (!empty($u['department']) && !in_array($u['department'], $departments)) {
-                $departments[] = $u['department'];
-            }
-        }
-        sort($departments);
-    }
-    foreach ($departments as $dept) {
-        echo 'existingDepartments.push("' . addslashes($dept) . '");' . "\n";
-    }
-    ?>
-    
-    function populateDepartments() {
-        const select = document.getElementById('user_department');
-        if (!select) return;
-        
-        // Clear existing options except first and "Other"
-        select.innerHTML = '<option value="" disabled selected>Select...</option><option value="Other">Other</option>';
-        
-        // Add existing departments
-        existingDepartments.forEach(function(dept) {
-            const option = document.createElement('option');
-            option.value = dept;
-            option.textContent = dept;
-            select.appendChild(option);
-        });
-    }
-    
-    function handleDepartmentChange() {
-        const select = document.getElementById('user_department');
-        const otherField = document.getElementById('other_department');
-        
-        if (select.value === 'Other') {
-            otherField.style.display = 'block';
-            otherField.required = true;
-        } else {
-            otherField.style.display = 'none';
-            otherField.required = false;
-        }
-    }
-    
-    // On form submit, if "Other" is selected, copy the input value to the select
-    document.querySelector('#user-modal form').addEventListener('submit', function(e) {
-        const select = document.getElementById('user_department');
-        const otherField = document.getElementById('other_department');
-        
-        if (select && otherField && select.value === 'Other' && otherField.value.trim()) {
-            // Create a hidden input with the correct department value
-            const hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.name = 'department';
-            hiddenInput.value = otherField.value.trim();
-            
-            // Remove the select's name attribute so it doesn't submit "Other"
-            select.removeAttribute('name');
-            
-            this.appendChild(hiddenInput);
-        }
-    });
     
     function openUserModal() {
         if(userModal) {
             userModal.classList.remove('hidden');
             userModal.classList.add('flex');
             setTimeout(() => { document.querySelector('input[name="name"]')?.focus(); }, 50);
-            populateDepartments();
         }
     }
     
@@ -148,7 +74,6 @@
             userModal.classList.add('hidden');
             userModal.classList.remove('flex');
             document.querySelector('#user-modal form').reset();
-            document.getElementById('other_department').style.display = 'none';
         }
     }
 </script>

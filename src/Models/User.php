@@ -90,7 +90,7 @@ class User {
         ]);
     }
     // Update user details from the Admin panel
-    public function updateAsAdmin($id, $name, $email, $role, $password = '') {
+    public function updateAsAdmin($id, $name, $email, $role, $password = '', $department = 'CICS') {
         $db = (new \Config\Database())->getConnection();
         
         // If the admin typed a new password, hash it and update everything
@@ -98,7 +98,7 @@ class User {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $db->prepare("
                 UPDATE users 
-                SET name = :name, username = :username, email = :email, role = :role, password = :password 
+                SET name = :name, username = :username, email = :email, role = :role, password = :password, department = :department 
                 WHERE id = :id
             ");
             return $stmt->execute([
@@ -107,6 +107,7 @@ class User {
                 'email' => $email,
                 'role' => $role,
                 'password' => $hashed_password,
+                'department' => $department,
                 'id' => $id
             ]);
         } 
@@ -114,7 +115,7 @@ class User {
         else {
             $stmt = $db->prepare("
                 UPDATE users 
-                SET name = :name, username = :username, email = :email, role = :role 
+                SET name = :name, username = :username, email = :email, role = :role, department = :department 
                 WHERE id = :id
             ");
             return $stmt->execute([
@@ -122,6 +123,7 @@ class User {
                 'username' => $email,
                 'email' => $email,
                 'role' => $role,
+                'department' => $department,
                 'id' => $id
             ]);
         }

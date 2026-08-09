@@ -229,41 +229,125 @@
             });
         }
 
-        // === NOTIFICATIONS (Check for pending/returned docs) ===
+        // === NOTIFICATIONS (Real database-backed system) ===
         function checkNotifications() {
             var notifBadge = document.getElementById('notif-badge');
             var notifList = document.getElementById('notif-list');
             if (!notifBadge || !notifList) return;
             
-            // Fetch dashboard data or check via a simple endpoint
-            fetch('index.php?action=api_track&tracking_id=check')
+            // Fetch unread count
+            fetch('index.php?action=api_notification_count')
                 .then(function(res) { return res.json(); })
-                .catch(function() {
-                    // If it fails, show demo notifications based on page context
-                    var pendingItems = document.querySelectorAll('[class*="pending"]').length;
-                    var returnedItems = document.querySelectorAll('[class*="returned"]').length;
-                    var total = pendingItems + returnedItems;
-                    
-                    if (total > 0) {
+                .then(function(data) {
+                    var count = data.count || 0;
+                    if (count > 0) {
                         notifBadge.classList.remove('hidden');
-                        notifBadge.textContent = total > 9 ? '9+' : total;
-                        notifList.innerHTML = '';
-                        
-                        if (returnedItems > 0) {
-                            notifList.innerHTML += '<div class="px-4 py-3 border-b border-slate-100 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800"><p class="text-sm font-semibold text-orange-600 dark:text-orange-400">' + returnedItems + ' returned document(s)</p><p class="text-xs text-slate-500 mt-0.5">Requires attention</p></div>';
-                        }
-                        if (pendingItems > 0) {
-                            notifList.innerHTML += '<div class="px-4 py-3 hover:bg-slate-50 dark:hover:bg-zinc-800"><p class="text-sm font-semibold text-amber-600 dark:text-amber-400">' + pendingItems + ' pending document(s)</p><p class="text-xs text-slate-500 mt-0.5">Awaiting action</p></div>';
-                        }
+                        notifBadge.textContent = count > 9 ? '9+' : count;
                     } else {
-                        notifList.innerHTML = '<div class="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">No new notifications</div>';
+                        notifBadge.classList.add('hidden');
                     }
+                })
+                .catch(function() {
+                    notifBadge.classList.add('hidden');
                 });
+        }
+        
+        // Fetch notifications when dropdown opens
+        function loadNotifications() {
+            var notifList = document.getElementById('notif-list');
+            if (!notifList) return;
+            
+            notifList.innerHTML = '<div class="px-4 py-8 text-center text-sm text-slate-500"><svg class="w-5 h-5 animate-spin mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg><p class="text-sm text-slate-400">Loading...</p></div>';
+            
+            fetch('index.php?action=api_notifications')
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (!data || data.length === 0) {
+                        notifList.innerHTML = '<div class="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">No notifications yet</div>';
+                        return;
+                    }
+                    
+                    var html = '';
+                    data.forEach(function(n) {
+                        var icon = '';
+                        var iconColor = '';
+                        var borderColor = '';
+                        
+                        if (n.type === 'success') {
+                            icon = '<svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+                            iconColor = 'bg-emerald-50 dark:bg-emerald-500/10';
+                            borderColor = 'border-emerald-500/20';
+                        } else if (n.type === 'warning') {
+                            icon = '<svg class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+                            iconColor = 'bg-amber-50 dark:bg-amber-500/10';
+                            borderColor = 'border-amber-500/20';
+                        } else {
+                            icon = '<svg class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+                            iconColor = 'bg-blue-50 dark:bg-blue-500/10';
+                            borderColor = 'border-blue-500/20';
+                        }
+                        
+                        var trackingLink = n.tracking_id 
+                            ? '<a href="index.php?action=view&tracking_id=' + encodeURIComponent(n.tracking_id) + '" class="text-xs font-mono text-brand-600 dark:text-brand-400 hover:underline">' + n.tracking_id + '</a>'
+                            : '';
+                        
+                        var unreadClass = n.is_read == 0 ? 'border-l-2 ' + borderColor : '';
+                        
+                        html += '<div class="px-4 py-3 border-b border-slate-100 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors ' + unreadClass + '">' +
+                            '<div class="flex gap-3">' +
+                                '<div class="w-8 h-8 rounded-full ' + iconColor + ' flex items-center justify-center shrink-0 mt-0.5">' + icon + '</div>' +
+                                '<div class="flex-1 min-w-0">' +
+                                    '<p class="text-sm font-bold text-slate-900 dark:text-white">' + n.title + '</p>' +
+                                    '<p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">' + n.message + '</p>' +
+                                    '<div class="flex items-center gap-2 mt-1.5">' +
+                                        trackingLink +
+                                        '<span class="text-[10px] text-slate-400 font-mono">' + (n.time_ago || n.created_at_formatted) + '</span>' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>';
+                    });
+                    
+                    // Add "Mark all as read" button
+                    html += '<div class="px-4 py-2.5 border-t border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800/50">' +
+                        '<button onclick="markAllNotificationsRead()" class="w-full text-center text-xs font-bold text-brand-600 dark:text-brand-400 hover:text-brand-700 transition-colors py-1">Mark All as Read</button>' +
+                    '</div>';
+                    
+                    notifList.innerHTML = html;
+                })
+                .catch(function() {
+                    notifList.innerHTML = '<div class="px-4 py-8 text-center text-sm text-red-500">Error loading notifications</div>';
+                });
+        }
+        
+        // Mark all as read
+        function markAllNotificationsRead() {
+            var formData = new FormData();
+            fetch('index.php?action=api_notification_read_all', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function(res) { return res.json(); })
+            .then(function() {
+                checkNotifications();
+                loadNotifications();
+            })
+            .catch(function() {});
+        }
+        
+        // Hook into notification button click to load notifications
+        var notifBtn = document.getElementById('notif-btn');
+        if (notifBtn) {
+            notifBtn.addEventListener('click', function() {
+                setTimeout(loadNotifications, 100);
+            });
         }
         
         // Run notification check on page load
         if (document.getElementById('notif-badge')) {
-            setTimeout(checkNotifications, 1000);
+            checkNotifications();
+            // Re-check every 30 seconds
+            setInterval(checkNotifications, 30000);
         }
 
         // === STOP DROPDOWN CLOSE ON INNER CLICKS ===

@@ -53,6 +53,20 @@ try {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     echo "✅ Table 'documents' ready.\n";
 
+    // --- Notifications Table ---
+    $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        type VARCHAR(50) NOT NULL DEFAULT 'info',
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        tracking_id VARCHAR(20) DEFAULT NULL,
+        is_read TINYINT(1) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    echo "✅ Table 'notifications' ready.\n";
+
     // --- Document History Table ---
     $pdo->exec("CREATE TABLE IF NOT EXISTS document_history (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -69,14 +83,29 @@ try {
     if ($stmt->fetchColumn() == 0) {
         $hashed = password_hash('admin123', PASSWORD_BCRYPT);
         $pdo->exec("INSERT INTO users (name, username, password, email, role, department, status) VALUES 
-            ('System Administrator', 'admin', '$hashed', 'admin@itrackdocs.com', 'admin', 'ADMIN', 'active'),
-            ('HR Department Head', 'hrhead', '$hashed', 'hr@itrackdocs.com', 'head', 'CICS', 'active'),
-            ('Staff User', 'staff1', '$hashed', 'staff@itrackdocs.com', 'staff', 'CICS', 'active')
+            ('System Administrator', 'admin', '$hashed', 'admin@itrackdocs.com', 'admin', 'CICS', 'active'),
+            ('CICS Department Head', 'cicshead', '$hashed', 'cics@itrackdocs.com', 'head', 'CICS', 'active'),
+            ('CICS Staff User', 'staff1', '$hashed', 'staff@itrackdocs.com', 'staff', 'CICS', 'active')
         ");
-        echo "✅ Default users seeded (admin/admin123, hrhead/admin123, staff1/admin123).\n";
+        echo "✅ Default users seeded (admin/admin123, cicshead/admin123, staff1/admin123).\n";
     } else {
         echo "ℹ️  Default users already exist, skipping seed.\n";
     }
+
+    // 🔥 CICS ONLY: Update any existing non-CICS users to CICS
+    $pdo->exec("UPDATE users SET department = 'CICS' WHERE department != 'CICS'");
+    echo "✅ All users updated to CICS department.\n";
+
+    // 🔥 CICS ONLY: Update existing documents to CICS departments
+    $pdo->exec("UPDATE documents SET origin = 'CICS', target_department = 'CICS', current_location = 'CICS' WHERE origin != 'CICS' OR target_department != 'CICS' OR current_location != 'CICS'");
+    echo "✅ All documents updated to CICS department.\n";
+
+    // 🔥 CICS ONLY: Convert old categories to IC/EC
+    // Any existing "Internal Letter" or "Letter" category becomes "IC" (Internal Communication)
+    $pdo->exec("UPDATE documents SET category = 'IC' WHERE category IN ('Internal Letter', 'Letter')");
+    // Any other category (External Letter, Memorandum, Report, etc.) becomes "EC" (External Communication)
+    $pdo->exec("UPDATE documents SET category = 'EC' WHERE category IS NULL OR category NOT IN ('IC', 'EC')");
+    echo "✅ All document categories converted to IC/EC.\n";
 
     echo "\n🎉 Setup complete!\n";
     echo "   Login with: admin / admin123\n";
