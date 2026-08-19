@@ -84,7 +84,6 @@
                         <img src="https://ui-avatars.com/api/?name=<?= urlencode($_SESSION['user_name']) ?>&background=2563eb&color=fff&rounded=true" alt="Avatar" class="w-8 h-8 rounded-full ring-2 ring-white dark:ring-zinc-800">
                         <div class="hidden sm:flex flex-col items-start">
                             <span class="text-sm font-semibold text-slate-900 dark:text-white leading-none"><?= htmlspecialchars($_SESSION['user_name']) ?></span>
-                            <span class="text-xs text-slate-500 dark:text-slate-400 leading-tight"><?= htmlspecialchars($_SESSION['user_department'] ?? '') ?></span>
                         </div>
                         <svg class="w-4 h-4 text-slate-400 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                     </button>
@@ -92,7 +91,6 @@
                     <div id="user-menu-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-xl overflow-hidden z-50">
                         <div class="px-4 py-3 border-b border-slate-100 dark:border-zinc-800 sm:hidden">
                             <p class="text-sm font-semibold text-slate-900 dark:text-white"><?= htmlspecialchars($_SESSION['user_name']) ?></p>
-                            <p class="text-xs text-slate-500"><?= htmlspecialchars($_SESSION['user_department'] ?? '') ?></p>
                         </div>
                         <a href="index.php?action=dashboard" class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors">
                             <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>

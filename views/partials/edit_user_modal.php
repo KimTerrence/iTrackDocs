@@ -36,13 +36,6 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Department</label>
-                    <input type="hidden" name="department" value="CICS">
-                    <input type="text" value="CICS" readonly 
-                        class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 rounded-xl px-4 py-3 cursor-not-allowed font-bold outline-none shadow-sm">
-                </div>
-
-                <div>
                     <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Reset Password <span class="text-slate-400 font-normal lowercase">(Leave blank to keep current)</span></label>
                     <input type="password" name="password" placeholder="••••••••" 
                         class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm">

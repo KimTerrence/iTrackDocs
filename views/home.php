@@ -163,7 +163,7 @@
                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
                     <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-3">Real-Time Routing</h3>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">Watch documents move across departments live. Track bottlenecks and maintain strict SLA compliance.</p>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">Watch documents move through the system live. Track bottlenecks and maintain strict SLA compliance.</p>
                 </div>
                 <div class="bg-white dark:bg-slate-900 p-8 rounded-3xl ring-1 ring-slate-200 dark:ring-slate-800 shadow-sm hover:shadow-xl transition-all group">
                     <div class="w-12 h-12 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">

@@ -26,62 +26,86 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
         Back to Dashboard
     </a>
 
-    <div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
+    <div class="flex flex-row flex-nowrap items-start gap-6" style="display:flex;flex-direction:row;flex-wrap:nowrap;align-items:flex-start;gap:1.5rem;">
         
-        <div class="xl:col-span-3 space-y-6">
+        <div class="flex-1 min-w-0 space-y-6" style="flex:1 1 0%;min-width:0;">
             
             <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-8 shadow-sm">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-8">
                     <div>
                         <span class="font-mono text-brand-600 dark:text-brand-400 font-bold px-3 py-1 bg-brand-50 dark:bg-brand-500/10 rounded-lg text-sm"><?= htmlspecialchars($tracking_id) ?></span>
                         <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white mt-2"><?= htmlspecialchars($document['title']) ?></h1>
+                        <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 ring-1 ring-purple-600/20">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                                <?php
+                                    $cat = $document['category'] ?? 'Uncategorized';
+                                    if ($cat === 'IC') echo 'IC - Internal';
+                                    elseif ($cat === 'EC') echo 'EC - External';
+                                    else echo htmlspecialchars($cat);
+                                ?>
+                            </span>
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 ring-1 ring-slate-200 dark:ring-slate-700">
+                                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                <?= htmlspecialchars($document['current_location']) ?>
+                            </span>
+                        </div>
                     </div>
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold uppercase tracking-wider 
-                        <?php 
-                            $s = strtolower($document['status']);
-                            if (in_array($s, ['approved', 'received', 'completed', 'returned'])) echo 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20';
-                            elseif ($s === 'void') echo 'bg-red-50 text-red-700 ring-1 ring-red-600/20';
-                            elseif ($s === 'routing') echo 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/20';
-                            else echo 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20';
-                        ?>">
-                        <?= htmlspecialchars($document['status']) ?>
-                    </span>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 border-t border-slate-100 dark:border-slate-800 pt-6">
-                    <div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Category</p>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 ring-1 ring-purple-600/20">
+                    <div class="shrink-0 flex flex-col items-start sm:items-end gap-3">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold uppercase tracking-wider 
                             <?php 
-                                $cat = $document['category'] ?? 'Uncategorized';
-                                if ($cat === 'IC') echo 'IC - Internal Communication';
-                                elseif ($cat === 'EC') echo 'EC - External Communication';
-                                else echo htmlspecialchars($cat);
-                            ?>
+                                $s = strtolower($document['status']);
+                                if (in_array($s, ['approved', 'received', 'completed', 'returned'])) echo 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20';
+                                elseif ($s === 'void') echo 'bg-red-50 text-red-700 ring-1 ring-red-600/20';
+                                elseif ($s === 'routing') echo 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/20';
+                                else echo 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20';
+                            ?>">
+                            <?= htmlspecialchars($document['status']) ?>
                         </span>
-                    </div>
-                    <div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Origin</p>
-                        <p class="text-slate-900 dark:text-white font-semibold"><?= htmlspecialchars($document['origin']) ?></p>
-                    </div>
-                    
-                    <div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Target Destination</p>
-                        <p class="text-brand-600 dark:text-brand-400 font-bold flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
-                            <?= htmlspecialchars($document['target_department'] ?? 'Not Specified') ?>
-                        </p>
-                    </div>
 
-                    <div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Current Location</p>
-                        <p class="text-slate-900 dark:text-white font-semibold flex items-center gap-2">
-                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                            <?= htmlspecialchars($document['current_location']) ?>
-                        </p>
+                        <?php if (!empty($creator)): ?>
+                            <?php
+                                $trackUserName = $creator['name'] ?? ('User #' . $document['creator_id']);
+                                $trackDept = $creator['department'] ?? '';
+                                $trackEmail = $creator['email'] ?? '';
+                                $trackRole = $creator['role'] ?? '';
+                                $initials = '';
+                                foreach (preg_split('/\s+/', trim($trackUserName)) as $part) {
+                                    if ($part !== '') { $initials .= strtoupper(function_exists('mb_substr') ? mb_substr($part, 0, 1) : substr($part, 0, 1)); }
+                                    if (strlen($initials) >= 2) { break; }
+                                }
+                            ?>
+                            <div class="flex items-center gap-3 pl-3 pr-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                                <!-- Avatar with initials + presence dot -->
+                                <div class="relative shrink-0">
+                                    <div class="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white font-bold shadow-md shadow-brand-500/25 ring-2 ring-white dark:ring-slate-900">
+                                        <?= htmlspecialchars($initials !== '' ? $initials : 'U') ?>
+                                    </div>
+                                    <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" title="Active user"></span>
+                                </div>
+
+                                <div class="min-w-0">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Tracking User</p>
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <p class="text-slate-900 dark:text-white font-bold text-sm truncate max-w-[160px]"><?= htmlspecialchars($trackUserName) ?></p>
+                                        <?php if (!empty($trackRole)): ?>
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-brand-100 dark:bg-brand-500/15 text-brand-700 dark:text-brand-400">
+                                                <?= htmlspecialchars(ucfirst($trackRole)) ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate max-w-[180px]">
+                                        <?php
+                                            $trackMeta = array_filter([$trackDept, $trackEmail]);
+                                            echo htmlspecialchars(implode(' · ', $trackMeta) !== '' ? implode(' · ', $trackMeta) : 'No department / email');
+                                        ?>
+                                    </p>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
-            </div>
+
 
             <?php if (!empty($document['file_path'])): ?>
                 <?php 
@@ -125,35 +149,29 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
                                     <span class="text-xs font-bold text-brand-600 dark:text-brand-400"><?= htmlspecialchars($log['date']) ?></span>
                                 </div>
                                 <p class="text-slate-900 dark:text-white text-sm font-medium leading-snug">
-                                    <?= htmlspecialchars($log['action']) ?>
-                                </p>
+                                    <?= nl2br(htmlspecialchars($log['action'])) ?>
+                                                                </p>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
             </div>
         </div>
+        </div>
 
-        <div class="xl:col-span-1 space-y-6">
+        <div class="w-64 min-w-[240px] shrink-0 space-y-6 sticky top-6" style="flex:0 0 auto;width:16rem;min-width:240px;position:sticky;top:1.5rem;">
             
-            <?php 
-                $user_dept = $_SESSION['user_department'] ?? '';
+            <?php
                 $user_id = $_SESSION['user_id'] ?? null;
                 $is_sender = ($document['creator_id'] == $user_id);
-                $is_receiver = (
-                    !$is_sender && 
-                    ($user_dept === $document['origin'] || 
-                     $user_dept === $document['current_location'] || 
-                     $user_dept === ($document['target_department'] ?? ''))
-                );
+                $is_receiver = !$is_sender && strtolower($document['status'] ?? '') === 'routing';
             ?>
             
             <?php if ($is_sender): ?>
                 <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 shadow-sm">
                     <h3 class="font-bold text-slate-900 dark:text-white mb-2">Manual Route Update</h3>
                     <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-                        You created this document. Click below to mark it as <strong>returned</strong> to your department 
-                        (<span class="font-bold text-slate-700 dark:text-slate-300"><?= htmlspecialchars($user_dept) ?></span>).
+                        You created this document. Click below to mark it as <strong>returned</strong>.
                     </p>
                     <form action="index.php?action=mark_returned" method="POST">
                         <input type="hidden" name="tracking_id" value="<?= htmlspecialchars($tracking_id) ?>">
@@ -166,8 +184,7 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
                 <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 shadow-sm">
                     <h3 class="font-bold text-slate-900 dark:text-white mb-2">Confirm Receipt</h3>
                     <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-                        This document is for your department. Click below to confirm <strong>receipt</strong> 
-                        at <span class="font-bold text-slate-700 dark:text-slate-300"><?= htmlspecialchars($user_dept) ?></span>.
+                        This document is in routing. Click below to confirm <strong>receipt</strong>.
                     </p>
                     <form action="index.php?action=mark_received_dashboard" method="POST">
                         <input type="hidden" name="tracking_id" value="<?= htmlspecialchars($tracking_id) ?>">

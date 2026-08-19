@@ -29,25 +29,16 @@
                 <input type="password" name="password" placeholder="••••••••" required class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all shadow-sm">
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">System Role</label>
-                    <select name="role" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all shadow-sm cursor-pointer">
-                        <option value="staff">Staff</option>
-                        <?php if (strtolower($_SESSION['user_role'] ?? '') === 'admin'): ?>
-                            <option value="head">Department Head</option>
-                            <option value="admin">System Admin</option>
-                        <?php endif; ?>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Department</label>
-                    <input type="hidden" name="department" value="CICS">
-                    <input type="text" value="CICS" readonly 
-                        class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 rounded-xl px-4 py-3 cursor-not-allowed font-bold outline-none shadow-sm">
-                </div>
-                </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">System Role</label>
+                <select name="role" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all shadow-sm cursor-pointer">
+                    <option value="staff">Staff</option>
+                    <?php if (strtolower($_SESSION['user_role'] ?? '') === 'admin'): ?>
+                        <option value="head">Department Head</option>
+                        <option value="admin">System Admin</option>
+                    <?php endif; ?>
+                </select>
+            </div>
             </div>
         </div>
 

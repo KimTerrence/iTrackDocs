@@ -15,10 +15,11 @@ class Document {
 
     public function getAll() {
         // 🔥 CICS ONLY: Filter to only CICS documents with IC/EC categories
-        $query = "SELECT * FROM documents 
-                  WHERE category IN ('IC', 'EC')
-                  AND (origin = 'CICS' OR current_location = 'CICS' OR target_department = 'CICS')
-                  ORDER BY created_at DESC";
+        $query = "SELECT d.*, u.name AS creator_name FROM documents d
+                  LEFT JOIN users u ON u.id = d.creator_id
+                  WHERE d.category IN ('IC', 'EC')
+                  AND (d.origin = 'CICS' OR d.current_location = 'CICS' OR d.target_department = 'CICS')
+                  ORDER BY d.created_at DESC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         
@@ -229,10 +230,11 @@ class Document {
 
     public function getRelevantToDepartment($department) {
         // 🔥 CICS ONLY: Filter to CICS + IC/EC
-        $query = "SELECT * FROM documents 
-                  WHERE category IN ('IC', 'EC')
-                  AND (origin = 'CICS' OR current_location = 'CICS' OR target_department = 'CICS')
-                  ORDER BY created_at DESC";
+        $query = "SELECT d.*, u.name AS creator_name FROM documents d
+                  LEFT JOIN users u ON u.id = d.creator_id
+                  WHERE d.category IN ('IC', 'EC')
+                  AND (d.origin = 'CICS' OR d.current_location = 'CICS' OR d.target_department = 'CICS')
+                  ORDER BY d.created_at DESC";
                   
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
@@ -272,36 +274,36 @@ class Document {
         $offset = ($page - 1) * $limit;
         
         // 🔥 CICS ONLY: Always filter to CICS + IC/EC
-        $whereClause = "WHERE (origin = 'CICS' OR current_location = 'CICS' OR target_department = 'CICS')
-                        AND category IN ('IC', 'EC')";
+        $whereClause = "WHERE (d.origin = 'CICS' OR d.current_location = 'CICS' OR d.target_department = 'CICS')
+                        AND d.category IN ('IC', 'EC')";
         $params = [];
         
         // Apply search filter
         if (!empty($filters['search'])) {
-            $whereClause .= " AND (tracking_id LIKE :search OR title LIKE :search)";
+            $whereClause .= " AND (d.tracking_id LIKE :search OR d.title LIKE :search)";
             $params[':search'] = '%' . $filters['search'] . '%';
         }
         
         // Apply status filter
         if (!empty($filters['status'])) {
-            $whereClause .= " AND status = :status";
+            $whereClause .= " AND d.status = :status";
             $params[':status'] = $filters['status'];
         }
         
         // Apply category filter
         if (!empty($filters['category'])) {
-            $whereClause .= " AND category = :category";
+            $whereClause .= " AND d.category = :category";
             $params[':category'] = $filters['category'];
         }
         
         // Apply origin/department filter
         if (!empty($filters['department'])) {
-            $whereClause .= " AND (origin = :dept_filter OR target_department = :dept_filter OR current_location = :dept_filter)";
+            $whereClause .= " AND (d.origin = :dept_filter OR d.target_department = :dept_filter OR d.current_location = :dept_filter)";
             $params[':dept_filter'] = $filters['department'];
         }
         
         // Count Query
-        $countQuery = "SELECT COUNT(*) FROM documents " . $whereClause;
+        $countQuery = "SELECT COUNT(*) FROM documents d " . $whereClause;
         $countStmt = $this->conn->prepare($countQuery);
         foreach ($params as $key => $val) {
             $countStmt->bindValue($key, $val);
@@ -309,8 +311,10 @@ class Document {
         $countStmt->execute();
         $total = $countStmt->fetchColumn();
         
-        // Data Query
-        $query = "SELECT * FROM documents " . $whereClause . " ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+        // Data Query (JOIN users to include the creator's name)
+        $query = "SELECT d.*, u.name AS creator_name FROM documents d
+                  LEFT JOIN users u ON u.id = d.creator_id " . $whereClause . "
+                  ORDER BY d.created_at DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->conn->prepare($query);
         foreach ($params as $key => $val) {
             $stmt->bindValue($key, $val);
@@ -336,36 +340,36 @@ class Document {
         $offset = ($page - 1) * $limit;
         
         // 🔥 CICS ONLY: Always filter to CICS + IC/EC
-        $whereClause = "WHERE (origin = 'CICS' OR current_location = 'CICS' OR target_department = 'CICS')
-                        AND category IN ('IC', 'EC')";
+        $whereClause = "WHERE (d.origin = 'CICS' OR d.current_location = 'CICS' OR d.target_department = 'CICS')
+                        AND d.category IN ('IC', 'EC')";
         $params = [];
         
         // Apply search filter
         if (!empty($filters['search'])) {
-            $whereClause .= " AND (tracking_id LIKE :search OR title LIKE :search)";
+            $whereClause .= " AND (d.tracking_id LIKE :search OR d.title LIKE :search)";
             $params[':search'] = '%' . $filters['search'] . '%';
         }
         
         // Apply status filter
         if (!empty($filters['status'])) {
-            $whereClause .= " AND status = :status";
+            $whereClause .= " AND d.status = :status";
             $params[':status'] = $filters['status'];
         }
         
         // Apply category filter
         if (!empty($filters['category'])) {
-            $whereClause .= " AND category = :category";
+            $whereClause .= " AND d.category = :category";
             $params[':category'] = $filters['category'];
         }
         
         // Apply origin/department filter
         if (!empty($filters['department'])) {
-            $whereClause .= " AND (origin = :dept_filter OR target_department = :dept_filter OR current_location = :dept_filter)";
+            $whereClause .= " AND (d.origin = :dept_filter OR d.target_department = :dept_filter OR d.current_location = :dept_filter)";
             $params[':dept_filter'] = $filters['department'];
         }
         
         // Count Query
-        $countQuery = "SELECT COUNT(*) FROM documents " . $whereClause;
+        $countQuery = "SELECT COUNT(*) FROM documents d " . $whereClause;
         $countStmt = $this->conn->prepare($countQuery);
         foreach ($params as $key => $val) {
             $countStmt->bindValue($key, $val);
@@ -373,8 +377,10 @@ class Document {
         $countStmt->execute();
         $total = $countStmt->fetchColumn();
         
-        // Data Query
-        $query = "SELECT * FROM documents " . $whereClause . " ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+        // Data Query (JOIN users to include the creator's name)
+        $query = "SELECT d.*, u.name AS creator_name FROM documents d
+                  LEFT JOIN users u ON u.id = d.creator_id " . $whereClause . "
+                  ORDER BY d.created_at DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->conn->prepare($query);
         foreach ($params as $key => $val) {
             $stmt->bindValue($key, $val);

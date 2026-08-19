@@ -81,7 +81,6 @@ function getStatusBadge($status) {
                 <thead class="bg-slate-50/80 dark:bg-slate-800/50 sticky top-0 z-10 backdrop-blur-md">
                     <tr>
                         <th class="py-4 pl-6 pr-3 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">User Details</th>
-                        <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Department</th>
                         <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">System Role</th>
                         <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                         <th class="py-4 pl-3 pr-6 text-right text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
@@ -90,7 +89,7 @@ function getStatusBadge($status) {
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-slate-900">
                     <?php if (empty($users)): ?>
                         <tr>
-                            <td colspan="5" class="py-16 text-center">
+                            <td colspan="4" class="py-16 text-center">
                                 <svg class="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                                 <p class="text-slate-500 dark:text-slate-400 font-medium text-lg">No users found.</p>
                             </td>
@@ -107,12 +106,6 @@ function getStatusBadge($status) {
                                         <div class="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5"><?= htmlspecialchars($user['email']) ?></div>
                                     </div>
                                 </div>
-                            </td>
-                            
-                            <td class="px-3 py-4 whitespace-nowrap">
-                                <span class="text-sm font-bold text-slate-700 dark:text-slate-300">
-                                    <?= htmlspecialchars($user['department'] ?? 'Unassigned') ?>
-                                </span>
                             </td>
                             
                             <td class="px-3 py-4 whitespace-nowrap">
@@ -149,9 +142,8 @@ function getStatusBadge($status) {
                                         'id' => $user['id'] ?? '',
                                         'name' => $user['name'] ?? '',
                                         'email' => $user['email'] ?? '',
-                                        'role' => strtolower($user['role'] ?? 'staff'),
-                                        'department' => $user['department'] ?? ''
-                                    ]), ENT_QUOTES, 'UTF-8') ?>)"
+                                    'role' => strtolower($user['role'] ?? 'staff')
+                                ]), ENT_QUOTES, 'UTF-8') ?>)"
                                     class="text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 bg-brand-50 dark:bg-brand-500/10 px-4 py-2 rounded-lg transition-colors inline-block">
                                     Edit
                                 </button>

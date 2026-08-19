@@ -142,7 +142,15 @@ class DocumentController extends Controller {
         $document = $model->findByTrackingId($tracking_id);
         
         if (!$document) { header("Location: index.php?action=dashboard"); exit; }
-        $this->render('view', ['tracking_id' => $tracking_id, 'document' => $document]);
+        
+        // 🔥 Fetch the user who created / is using this tracking code
+        $creator = null;
+        if (!empty($document['creator_id'])) {
+            $userModel = new \Models\User();
+            $creator = $userModel->findById($document['creator_id']);
+        }
+        
+        $this->render('view', ['tracking_id' => $tracking_id, 'document' => $document, 'creator' => $creator]);
     }
 
   // 5. Mobile Scan Page (PUBLIC - NO LOGIN REQUIRED)
@@ -172,14 +180,15 @@ class DocumentController extends Controller {
         
         $id = $_POST['tracking_id'] ?? null;
         $location = $_POST['location'] ?? 'Receiving Desk'; 
+        $receiver_name = trim($_POST['receiver_name'] ?? '');
         
         if ($id) {
             $model = new \Models\Document();
             
             // 1. Update the database
-            $model->addHistory($id, $location, "Received at " . $location);
+            $model->addHistory($id, $location, "Received at " . $location . (!empty($receiver_name) ? " by " . $receiver_name : ""));
             $model->updateStatus($id, 'Received');
-            $this->logActivity('document_receive', "Document $id received at '$location'.");
+            $this->logActivity('document_receive', "Document $id received at '$location'" . (!empty($receiver_name) ? " by $receiver_name" : "") . ".");
             
             // 2. Fetch the document details for notifications
             $document = $model->findByTrackingId($id);
@@ -187,8 +196,8 @@ class DocumentController extends Controller {
             
             // 🔔 Notify the document creator
             if ($document) {
-                $this->notify($document['creator_id'], 'success', 'Document Received', 
-                    "Your document '{$document['title']}' ($id) has been received at $location.",
+                $this->notify($document['creator_id'], 'success', 'Document Received',
+                    "Your document '{$document['title']}' ($id) has been received at $location" . (!empty($receiver_name) ? " by $receiver_name." : "."),
                     $id);
             }
             
@@ -270,11 +279,14 @@ class DocumentController extends Controller {
         
         if ($id) {
             $model = new \Models\Document();
-            
-            // 1. Update history and status
-            $model->addHistory($id, $location, "Document Returned to " . $location);
+
+            // 🔥 Capture WHO clicked the "Mark as Returned" button
+            $returnedBy = $_SESSION['user_name'] ?? 'Unknown User';
+
+            // 1. Update history and status (include who performed the action)
+            $model->addHistory($id, $location, "Document Returned to " . $location . "\nreceived by " . $returnedBy);
             $model->updateStatus($id, 'Returned');
-            $this->logActivity('document_return', "Document $id returned to '$location'.");
+            $this->logActivity('document_return', "Document $id returned to '$location' by $returnedBy.");
 
             // 🔔 Notify the origin department that the document has been returned
             $document = $model->findByTrackingId($id);

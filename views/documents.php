@@ -15,7 +15,6 @@ function filterQueryString($extra = []) {
     if (!empty($_GET['search'])) $params['search'] = $_GET['search'];
     if (!empty($_GET['status'])) $params['status'] = $_GET['status'];
     if (!empty($_GET['category'])) $params['category'] = $_GET['category'];
-    if (!empty($_GET['department'])) $params['department'] = $_GET['department'];
     $params = array_merge($params, $extra);
     return http_build_query($params);
 }
@@ -24,7 +23,6 @@ function filterQueryString($extra = []) {
 $current_search = $_GET['search'] ?? '';
 $current_status = $_GET['status'] ?? '';
 $current_category = $_GET['category'] ?? '';
-$current_department = $_GET['department'] ?? '';
 $base_action = $action ?? 'list';
 ?>
 <div class="animate-fade-in-up space-y-6">
@@ -61,10 +59,6 @@ $base_action = $action ?? 'list';
             <option value="">All Categories</option>
             <option value="IC" <?= $current_category === 'IC' ? 'selected' : '' ?>>IC - Internal Communication</option>
             <option value="EC" <?= $current_category === 'EC' ? 'selected' : '' ?>>EC - External Communication</option>
-        </select>
-        <select name="department" id="filterDepartment" class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand-500 transition-shadow">
-            <option value="">All Departments</option>
-            <option value="CICS" <?= $current_department === 'CICS' ? 'selected' : '' ?>>CICS</option>
         </select>
     </form>
 
@@ -104,8 +98,7 @@ $base_action = $action ?? 'list';
                     <tr>
                         <th class="py-4 pl-6 pr-3 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tracking Code</th>
                         <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Subject</th>
-                        <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Category</th>
-                        <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Origin</th>
+                        <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">User</th>
                         <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Location</th>
                         <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                         <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date Created</th>
@@ -115,7 +108,7 @@ $base_action = $action ?? 'list';
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-slate-900">
                     <?php if (empty($documents)): ?>
                         <tr>
-                            <td colspan="8" class="py-16 text-center">
+                            <td colspan="7" class="py-16 text-center">
                                 <svg class="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                 <p class="text-slate-500 dark:text-slate-400 font-medium text-lg">No documents found.</p>
                                 <p class="text-slate-400 dark:text-slate-500 text-sm mt-1">Try adjusting your search or filters.</p>
@@ -138,19 +131,13 @@ $base_action = $action ?? 'list';
                                 <?= htmlspecialchars($doc['title']) ?>
                             </td>
                             
-                            <td class="px-3 py-4 text-sm">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 ring-1 ring-purple-600/20">
-                                    <?php 
-                                        $cat = $doc['category'] ?? 'Uncategorized';
-                                        if ($cat === 'IC') echo 'IC - Internal Communication';
-                                        elseif ($cat === 'EC') echo 'EC - External Communication';
-                                        else echo htmlspecialchars($cat);
-                                    ?>
-                                </span>
-                            </td>
-                            
-                            <td class="px-3 py-4 text-sm font-medium text-slate-600 dark:text-slate-300">
-                                <?= htmlspecialchars($doc['origin']) ?>
+                            <td class="px-3 py-4 text-sm font-medium text-slate-700 dark:text-slate-200">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                    <span class="truncate max-w-[180px]">
+                                        <?= htmlspecialchars($doc['creator_name'] ?? 'User #' . ($doc['creator_id'] ?? '—')) ?>
+                                    </span>
+                                </div>
                             </td>
                             
                             <td class="px-3 py-4 text-sm font-medium text-slate-600 dark:text-slate-300">

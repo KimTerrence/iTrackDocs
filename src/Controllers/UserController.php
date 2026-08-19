@@ -244,10 +244,9 @@ class UserController extends Controller {
             $user_id = $_SESSION['user_id'];
             $name = trim($_POST['name'] ?? '');
             $email = trim($_POST['email'] ?? '');
-            $department = trim($_POST['department'] ?? '');
 
             // Basic Validation
-            if (empty($name) || empty($email) || empty($department)) {
+            if (empty($name) || empty($email)) {
                 $model = new \Models\User();
                 $user = $model->findById($user_id);
                 $error = "All fields are required.";

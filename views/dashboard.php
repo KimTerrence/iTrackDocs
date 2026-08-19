@@ -82,7 +82,7 @@
     
         <div class="relative z-10">
             <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-1">Dashboard</h1>
-            <p class="text-slate-500 dark:text-slate-400 text-sm">Welcome back, <span class="font-bold text-slate-700 dark:text-slate-300"><?= htmlspecialchars($_SESSION['user_name'] ?? 'Staff') ?></span>. from the <span class="font-bold"><?= htmlspecialchars($_SESSION['user_department'] ?? '') ?></span> office.</p>
+            <p class="text-slate-500 dark:text-slate-400 text-sm">Welcome back, <span class="font-bold text-slate-700 dark:text-slate-300"><?= htmlspecialchars($_SESSION['user_name'] ?? 'Staff') ?></span>.</p>
         </div>
         <div class="flex flex-wrap items-center gap-3 relative z-10">
             <button onclick="window.print()" class="print:hidden inline-flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
@@ -148,7 +148,7 @@
                         <tr>
                             <th class="py-3 pl-6 pr-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tracking ID</th>
                             <th class="px-3 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Document Details</th>
-                            <th class="px-3 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Category</th>
+                            <th class="px-3 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">User</th>
                             <th class="px-3 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                             <th class="py-3 pl-3 pr-6 text-right"><span class="sr-only">Action</span></th>
                         </tr>
@@ -174,20 +174,16 @@
                                     <td class="px-3 py-4">
                                         <p class="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[250px]"><?= htmlspecialchars($doc['title']) ?></p>
                                         <div class="flex items-center text-xs text-slate-500 mt-0.5 gap-2">
-                                            <span class="truncate max-w-[150px]">From: <?= htmlspecialchars($doc['origin']) ?></span>
-                                            <span>&bull;</span>
                                             <span class="text-brand-600 dark:text-brand-400 font-medium truncate max-w-[150px]">At: <?= htmlspecialchars($doc['current_location']) ?></span>
                                         </div>
                                     </td>
                                     <td class="whitespace-nowrap px-3 py-4 text-sm">
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 ring-1 ring-purple-600/20">
-                                            <?php 
-                                                $cat = $doc['category'] ?? 'Uncategorized';
-                                                if ($cat === 'IC') echo 'IC - Internal Communication';
-                                                elseif ($cat === 'EC') echo 'EC - External Communication';
-                                                else echo htmlspecialchars($cat);
-                                            ?>
-                                        </span>
+                                        <div class="flex items-center gap-2">
+                                            <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                            <span class="truncate max-w-[160px] text-slate-700 dark:text-slate-200">
+                                                <?= htmlspecialchars($doc['creator_name'] ?? 'User #' . ($doc['creator_id'] ?? '—')) ?>
+                                            </span>
+                                        </div>
                                     </td>
                                     <td class="whitespace-nowrap px-3 py-4 text-sm">
                                         <span class="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider <?= getStatusBadge($doc['status'] ?? 'Pending') ?>">
