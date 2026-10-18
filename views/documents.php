@@ -57,8 +57,9 @@ $base_action = $action ?? 'list';
         </select>
         <select name="category" id="filterCategory" class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand-500 transition-shadow">
             <option value="">All Categories</option>
-            <option value="IC" <?= $current_category === 'IC' ? 'selected' : '' ?>>IC - Internal Communication</option>
-            <option value="EC" <?= $current_category === 'EC' ? 'selected' : '' ?>>EC - External Communication</option>
+            <?php foreach (\Models\Document::CATEGORIES as $catKey => $catInfo): ?>
+                <option value="<?= htmlspecialchars($catKey) ?>" <?= $current_category === $catKey ? 'selected' : '' ?>><?= htmlspecialchars($catInfo['label']) ?></option>
+            <?php endforeach; ?>
         </select>
     </form>
 
@@ -92,7 +93,7 @@ $base_action = $action ?? 'list';
     </script>
 
     <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl overflow-hidden shadow-sm flex flex-col">
-        <div class="overflow-x-auto flex-1">
+        <div class="overflow-x-auto flex-1 [contain:paint]">
             <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
                 <thead class="bg-slate-50/80 dark:bg-slate-800/50">
                     <tr>
@@ -116,18 +117,22 @@ $base_action = $action ?? 'list';
                         </tr>
                     <?php else: ?>
                         <?php foreach ($documents as $id => $doc): ?>
+                        <?php $rowVoid = strtolower($doc['status'] ?? '') === 'void'; ?>
                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group">
-                            
+
                             <td class="whitespace-nowrap py-4 pl-6 pr-3 text-sm">
-                                <div class="flex items-center gap-2">                               
-                                    <span class="font-mono font-bold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors"><?= htmlspecialchars($id) ?></span>
+                                <div class="flex items-center gap-2">
+                                    <a href="index.php?action=view&tracking_id=<?= urlencode($id) ?>" title="View document"
+                                       class="font-mono font-bold hover:underline underline-offset-2 transition-colors <?= $rowVoid
+                                           ? 'text-red-600 dark:text-red-400 line-through decoration-2'
+                                           : 'text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 hover:text-brand-600' ?>"><?= htmlspecialchars($id) ?></a>
                                     <?php if (!empty($doc['file_path'])): ?>
                                         <svg class="w-4 h-4 text-brand-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                                     <?php endif; ?>
                                 </div>
                             </td>
                             
-                            <td class="px-3 py-4 text-sm font-bold text-slate-900 dark:text-white max-w-[250px] truncate">
+                            <td class="px-3 py-4 text-sm font-bold max-w-[250px] truncate <?= $rowVoid ? 'text-red-600 dark:text-red-400 line-through decoration-2' : 'text-slate-900 dark:text-white' ?>">
                                 <?= htmlspecialchars($doc['title']) ?>
                             </td>
                             

@@ -23,14 +23,14 @@ $userLogs = $userLogs ?? [];
                 <p class="text-slate-500 dark:text-slate-400 font-medium">No document activity logged yet.</p>
             </div>
         <?php else: ?>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto [contain:paint]">
                 <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
                     <thead class="bg-slate-50/80 dark:bg-slate-800/50">
                         <tr>
                             <th class="py-4 pl-6 pr-3 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Timestamp</th>
                             <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Document</th>
-                            <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Location</th>
-                            <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Action</th>
+                            <th class="min-w-[8rem] px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Location</th>
+                            <th class="min-w-[16rem] px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Action</th>
                             <th class="py-4 pl-3 pr-6 text-right text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tracking ID</th>
                         </tr>
                     </thead>
@@ -81,14 +81,14 @@ $userLogs = $userLogs ?? [];
                 <p class="text-slate-500 dark:text-slate-400 font-medium">No user activity logged yet.</p>
             </div>
         <?php else: ?>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto [contain:paint]">
                 <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
                     <thead class="bg-slate-50/80 dark:bg-slate-800/50">
                         <tr>
                             <th class="py-4 pl-6 pr-3 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Timestamp</th>
                             <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">User</th>
                             <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Action</th>
-                            <th class="px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description</th>
+                            <th class="min-w-[16rem] px-3 py-4 text-left text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description</th>
                             <th class="py-4 pl-3 pr-6 text-right text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">IP Address</th>
                         </tr>
                     </thead>

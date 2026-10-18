@@ -12,11 +12,11 @@ $domain = $_SERVER['HTTP_HOST'];
 // 3. Detect the exact path
 $path = strtok($_SERVER["REQUEST_URI"], '?'); 
 
-// 4. Build the final universal URL
-$receiveUrl = $protocol . $domain . $path . "?action=scan&tracking_id=" . urlencode($tracking_id);
+// 4. Build the public QR URL (read-only document details)
+$detailsUrl = $protocol . $domain . $path . "?action=scan&tracking_id=" . urlencode($tracking_id);
 
 // Generate the QR Code
-$qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . urlencode($receiveUrl);
+$qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . urlencode($detailsUrl);
 ?>
 
 <div class="w-full animate-fade-in-up print:hidden">
@@ -26,11 +26,12 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
         Back to Dashboard
     </a>
 
-    <div class="flex flex-row flex-nowrap items-start gap-6" style="display:flex;flex-direction:row;flex-wrap:nowrap;align-items:flex-start;gap:1.5rem;">
+    <!-- Stacked on phones/tablets, two columns from xl (the sidebar column needs the room) -->
+    <div class="flex flex-col xl:flex-row xl:items-start gap-6">
         
-        <div class="flex-1 min-w-0 space-y-6" style="flex:1 1 0%;min-width:0;">
+        <div class="w-full xl:flex-1 min-w-0 space-y-6">
             
-            <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-8 shadow-sm">
+            <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-5 sm:p-8 shadow-sm">
                 <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-8">
                     <div>
                         <span class="font-mono text-brand-600 dark:text-brand-400 font-bold px-3 py-1 bg-brand-50 dark:bg-brand-500/10 rounded-lg text-sm"><?= htmlspecialchars($tracking_id) ?></span>
@@ -38,12 +39,7 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
                         <div class="mt-2.5 flex flex-wrap items-center gap-2">
                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 ring-1 ring-purple-600/20">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
-                                <?php
-                                    $cat = $document['category'] ?? 'Uncategorized';
-                                    if ($cat === 'IC') echo 'IC - Internal';
-                                    elseif ($cat === 'EC') echo 'EC - External';
-                                    else echo htmlspecialchars($cat);
-                                ?>
+                                <?= htmlspecialchars(\Models\Document::categoryLabel($document['category'] ?? '')) ?>
                             </span>
                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 ring-1 ring-slate-200 dark:ring-slate-700">
                                 <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -107,16 +103,77 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
                 </div>
 
 
+            <?php if (\Models\Document::usesTemplate($document['category'] ?? '')): ?>
+                <?php
+                    $previewUrl = 'index.php?action=letter_preview&tracking_id=' . urlencode($tracking_id);
+                    $letterSaved = file_exists(\Models\Document::letterPath($tracking_id, 'json'));
+                    $hasDocx = file_exists(\Models\Document::letterPath($tracking_id));
+                    // Same rule as DocumentController::canEditLetter()
+                    $canEditLetter = ($document['creator_id'] == ($_SESSION['user_id'] ?? null) || strtolower($_SESSION['user_role'] ?? '') === 'admin')
+                        && strtolower($document['status'] ?? '') !== 'void';
+                ?>
+                <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-5 sm:p-8 shadow-sm">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+                        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Letter Preview</h2>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <a href="index.php?action=edit_letter&tracking_id=<?= urlencode($tracking_id) ?>" class="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white font-bold text-sm rounded-lg transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                <?= $canEditLetter ? 'Edit Letter' : 'Open Letter' ?>
+                            </a>
+                            <?php if ($hasDocx): ?>
+                                <a href="index.php?action=letter_file&tracking_id=<?= urlencode($tracking_id) ?>&download=1" class="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-sm rounded-lg transition-colors">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                    Download .docx
+                                </a>
+                            <?php endif; ?>
+                            <?php if ($letterSaved): ?>
+                                <button type="button" id="letterPrintBtn" class="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-sm rounded-lg transition-colors">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 002 2z" /></svg>
+                                    Print
+                                </button>
+                                <a href="<?= htmlspecialchars($previewUrl) ?>" target="_blank" class="px-4 py-2 bg-brand-50 text-brand-700 font-bold text-sm rounded-lg hover:bg-brand-100 transition-colors">
+                                    Open Full Screen
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php if ($letterSaved): ?>
+                        <iframe id="letterPreviewFrame" src="<?= htmlspecialchars($previewUrl) ?>" title="Letter preview" class="w-full rounded-2xl border border-slate-200 dark:border-slate-800" style="height: 600px;"></iframe>
+                    <?php else: ?>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">No letter yet. Open the editor to start from the CICS template.</p>
+                    <?php endif; ?>
+                </div>
+                <?php if ($letterSaved): ?>
+                    <script>
+                        (function () {
+                            const frame = document.getElementById('letterPreviewFrame');
+                            // The preview reports its height so the whole page shows without an inner scrollbar
+                            window.addEventListener('message', function (e) {
+                                if (e.origin === window.location.origin && e.source === frame.contentWindow && e.data && e.data.type === 'letter-preview-height') {
+                                    frame.style.height = Math.ceil(e.data.height) + 'px';
+                                }
+                            });
+                            // Prints only the letter (the preview page has its own print layout)
+                            document.getElementById('letterPrintBtn').addEventListener('click', function () {
+                                frame.contentWindow.focus();
+                                frame.contentWindow.print();
+                            });
+                        })();
+                    </script>
+                <?php endif; ?>
+            <?php endif; ?>
+
             <?php if (!empty($document['file_path'])): ?>
                 <?php 
                     $fileExtension = strtolower(pathinfo($document['file_path'], PATHINFO_EXTENSION));
                     $isImage = in_array($fileExtension, ['jpg', 'jpeg', 'png', 'gif']);
+                    $canPreview = $isImage || $fileExtension === 'pdf';
                 ?>
-                <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-8 shadow-sm">
+                <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-5 sm:p-8 shadow-sm">
                     <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Scanned Attachment</h2>
-                        <a href="<?= htmlspecialchars($document['file_path']) ?>" target="_blank" class="px-4 py-2 bg-brand-50 text-brand-700 font-bold text-sm rounded-lg hover:bg-brand-100 transition-colors">
-                            Open Full Screen
+                        <h2 class="text-lg font-bold text-slate-900 dark:text-white"><?= $canPreview ? 'Scanned Attachment' : 'Attachment' ?></h2>
+                        <a href="<?= htmlspecialchars($document['file_path']) ?>" <?= $canPreview ? 'target="_blank"' : 'download' ?> class="px-4 py-2 bg-brand-50 text-brand-700 font-bold text-sm rounded-lg hover:bg-brand-100 transition-colors">
+                            <?= $canPreview ? 'Open Full Screen' : 'Download ' . strtoupper(htmlspecialchars($fileExtension)) ?>
                         </a>
                     </div>
                     
@@ -128,14 +185,14 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
                         <?php else: ?>
                             <div class="py-12 text-center">
                                 <svg class="w-12 h-12 text-slate-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                <p class="text-slate-600 font-medium">This file type cannot be previewed.</p>
+                                <p class="text-slate-600 font-medium">This file type cannot be previewed. Use Download to open it.</p>
                             </div>
                         <?php endif; ?>
                     </div>
                 </div>
             <?php endif; ?>
 
-            <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-8 shadow-sm">
+            <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-5 sm:p-8 shadow-sm">
                 <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-6">Audit Trail & Routing History</h2>
                 <div class="space-y-6 relative before:absolute before:inset-0 before:ml-4 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 dark:before:via-slate-700 before:to-transparent">
                     <?php foreach (array_reverse($document['history']) as $log): ?>
@@ -159,14 +216,26 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
         </div>
         </div>
 
-        <div class="w-64 min-w-[240px] shrink-0 space-y-6 sticky top-6" style="flex:0 0 auto;width:16rem;min-width:240px;position:sticky;top:1.5rem;">
+        <div class="w-full xl:w-64 xl:min-w-[240px] xl:shrink-0 space-y-6 xl:sticky xl:top-6">
             
             <?php
                 $user_id = $_SESSION['user_id'] ?? null;
                 $is_sender = ($document['creator_id'] == $user_id);
-                $is_receiver = !$is_sender && strtolower($document['status'] ?? '') === 'routing';
+                $isVoid = strtolower($document['status'] ?? '') === 'void';
             ?>
-            
+
+            <?php if ($isVoid): ?>
+                <div class="flex items-start gap-3 bg-red-50 dark:bg-red-500/10 ring-1 ring-red-200 dark:ring-red-500/30 rounded-3xl p-5">
+                    <svg class="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                    <div>
+                        <p class="font-bold text-red-700 dark:text-red-300 text-sm">This document is void</p>
+                        <p class="text-xs text-red-600/90 dark:text-red-300/80 mt-1 leading-relaxed">
+                            It can no longer be returned, voided again or changed, and its QR can't be printed because the tracking code may be reused. You can still view and download it.
+                        </p>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <?php if ($is_sender): ?>
                 <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 shadow-sm">
                     <h3 class="font-bold text-slate-900 dark:text-white mb-2">Manual Route Update</h3>
@@ -174,64 +243,58 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
                         You created this document. Click below to mark it as <strong>returned</strong>.
                     </p>
                     <form action="index.php?action=mark_returned" method="POST">
+                        <fieldset <?= $isVoid ? 'disabled' : '' ?>>
                         <input type="hidden" name="tracking_id" value="<?= htmlspecialchars($tracking_id) ?>">
-                        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition-all text-sm shadow-md">
+                        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition-all text-sm shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none">
                             Mark as Returned
                         </button>
-                    </form>
-                </div>
-            <?php elseif ($is_receiver): ?>
-                <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 shadow-sm">
-                    <h3 class="font-bold text-slate-900 dark:text-white mb-2">Confirm Receipt</h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-                        This document is in routing. Click below to confirm <strong>receipt</strong>.
-                    </p>
-                    <form action="index.php?action=mark_received_dashboard" method="POST">
-                        <input type="hidden" name="tracking_id" value="<?= htmlspecialchars($tracking_id) ?>">
-                        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl transition-all text-sm shadow-md">
-                            Mark as Received
-                        </button>
+                        </fieldset>
                     </form>
                 </div>
             <?php endif; ?>
 
-            <?php if ($is_sender || $is_receiver): ?>
+            <?php if ($is_sender): ?>
             <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 shadow-sm">
                 <h3 class="font-bold text-slate-900 dark:text-white mb-2">Void Document</h3>
                 <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-                    Mark this document as <strong>void</strong>. This action cannot be undone easily.
+                    Mark this document as <strong>void</strong>. Its tracking code will be reused for the next letter in this category.
                 </p>
-                <form action="index.php?action=mark_void" method="POST" onsubmit="return confirm('Are you sure you want to mark this document as VOID?');">
+                <form action="index.php?action=mark_void" method="POST" onsubmit="return confirm('Are you sure you want to mark this document as VOID? Its tracking code will be given to the next letter in this category.');">
+                    <fieldset <?= $isVoid ? 'disabled' : '' ?>>
                     <input type="hidden" name="tracking_id" value="<?= htmlspecialchars($tracking_id) ?>">
-                    <button type="submit" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl transition-all text-sm shadow-md">
+                    <button type="submit" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl transition-all text-sm shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none">
                         Mark as Void
                     </button>
+                    </fieldset>
                 </form>
             </div>
             <?php endif; ?>
 
             <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 shadow-sm">
                 <h3 class="font-bold text-slate-900 dark:text-white mb-4">Upload Attachment</h3>
-                <form action="index.php?action=upload_attachment" method="POST" enctype="multipart/form-data" class="space-y-4">
+                <form action="index.php?action=upload_attachment" method="POST" enctype="multipart/form-data">
+                    <fieldset class="space-y-4" <?= $isVoid ? 'disabled' : '' ?>>
                     <input type="hidden" name="tracking_id" value="<?= htmlspecialchars($tracking_id) ?>">
                     <div>
                         <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Select File</label>
-                        <input type="file" name="scanned_file" accept=".pdf,.jpg,.jpeg,.png" required 
-                            class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-500 dark:text-slate-400 
-                            file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-brand-100 file:text-brand-700 hover:file:bg-brand-200 cursor-pointer transition-all">
+                        <input type="file" name="scanned_file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png" data-max-bytes="5242880" required
+                            class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-500 dark:text-slate-400
+                            file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-brand-100 file:text-brand-700 hover:file:bg-brand-200 cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        <p class="text-[11px] text-slate-400 mt-2 leading-snug">PDF, Word, Excel, PowerPoint, JPG or PNG · max 5MB</p>
                     </div>
-                    <button type="submit" class="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-500 text-white font-bold py-2.5 rounded-xl transition-all text-sm shadow-md shadow-brand-500/20">
+                    <button type="submit" class="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-500 text-white font-bold py-2.5 rounded-xl transition-all text-sm shadow-md shadow-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                         Upload File
                     </button>
+                    </fieldset>
                 </form>
             </div>
 
             <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 shadow-sm">
                 <h3 class="font-bold text-slate-900 dark:text-white mb-4">Quick Actions</h3>
-                <button onclick="window.print()" class="w-full flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-3 rounded-xl transition-all border border-slate-200 dark:border-slate-700">
+                <button onclick="window.print()" <?= $isVoid ? 'disabled' : '' ?> class="disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none w-full flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-3 rounded-xl transition-all border border-slate-200 dark:border-slate-700">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 002 2z" /></svg>
-                    Print Routing QR
+                    Print Document QR
                 </button>
             </div>
             
@@ -241,8 +304,8 @@ $qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . 
 
 <div class="hidden print:flex flex-col items-center pt-20 w-full h-screen bg-white text-black font-sans text-center">
     <div class="space-y-1 mb-8">
-        <h1 class="text-2xl font-black uppercase tracking-widest text-black">Routing QR</h1>
-        <p class="text-lg font-bold text-gray-700">Scan when received</p>
+        <h1 class="text-2xl font-black uppercase tracking-widest text-black">Document QR</h1>
+        <p class="text-lg font-bold text-gray-700">Scan to view document details</p>
     </div>
 
     <img src="<?= htmlspecialchars($qrCodeUrl) ?>" class="w-56 h-56 border-4 border-black p-3 mb-6" alt="Tracking QR">

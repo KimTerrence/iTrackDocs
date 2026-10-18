@@ -48,13 +48,17 @@
                         <select name="category" required 
                             class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all appearance-none cursor-pointer">
                             <option value="" disabled selected>Select category...</option>
-                            <option value="IC">IC - Internal Communication</option>
-                            <option value="EC">EC - External Communication</option>
+                            <?php foreach (\Models\Document::CATEGORIES as $catKey => $catInfo): ?>
+                                <option value="<?= htmlspecialchars($catKey) ?>" data-template="<?= \Models\Document::usesTemplate($catKey) ? '1' : '0' ?>"><?= htmlspecialchars($catInfo['label']) ?></option>
+                            <?php endforeach; ?>
                         </select>
                         <svg class="w-5 h-5 text-slate-400 dark:text-slate-500 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                         </svg>
                     </div>
+                    <p id="templateHint" class="hidden text-xs text-brand-600 dark:text-brand-400 mt-2">
+                        After creating, the CICS letter template opens for editing with the tracking code already at the top-left.
+                    </p>
                 </div>
             </div>
         </div>
@@ -74,7 +78,7 @@
                 <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                     Scanned Copy <span class="font-normal text-slate-500">(Optional)</span>
                 </label>
-                <input type="file" name="scanned_file" accept=".pdf,.jpg,.jpeg,.png" 
+                <input type="file" name="scanned_file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png" data-max-bytes="5242880"
                     class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded-xl px-4 py-3 outline-none transition-all
                            file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-brand-100 file:text-brand-700 hover:file:bg-brand-200 cursor-pointer">
                 <div class="mt-3 flex items-start gap-2">
@@ -82,7 +86,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     <p class="text-xs text-slate-400">
-                        Accepted formats: <span class="font-semibold text-slate-500">PDF, JPG, PNG</span> with maximum file size of <span class="font-semibold text-slate-500">5MB</span>.
+                        Accepted formats: <span class="font-semibold text-slate-500">PDF, Word, Excel, PowerPoint, JPG, PNG</span> with maximum file size of <span class="font-semibold text-slate-500">5MB</span>.
+                        The tracking code is stamped on PDF and image files.
                     </p>
                 </div>
             </div>
@@ -103,10 +108,24 @@
                     <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Create Document
+                    <span id="createLabel">Create Document</span>
                 </button>
             </div>
         </div>
 
     </form>
 </div>
+
+<script>
+    // Coded categories open the letter template after creation
+    (function () {
+        const select = document.querySelector('select[name="category"]');
+        const hint = document.getElementById('templateHint');
+        const label = document.getElementById('createLabel');
+        select.addEventListener('change', function () {
+            const usesTemplate = select.selectedOptions[0]?.dataset.template === '1';
+            hint.classList.toggle('hidden', !usesTemplate);
+            label.textContent = usesTemplate ? 'Create & Write Letter' : 'Create Document';
+        });
+    })();
+</script>

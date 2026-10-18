@@ -7,6 +7,51 @@ use Exception;
 
 class Document {
     private $conn;
+    private $movedLetters = []; // [from, to] letter file moves to undo if create() fails
+
+    // 🔥 CICS document categories (key stored in documents.category)
+    // series + code build the tracking ID: CICS-<series>-<code>-<YYYY>-<###>
+    // Categories without a series are not officially coded: CICS-<code>-<YYYY>-<###>
+    public const CATEGORIES = [
+        'EIN'   => ['label' => 'External Incoming Communication',           'series' => null,   'code' => 'EIN'],
+        'EC'    => ['label' => 'External Outgoing Communication',           'series' => '3330', 'code' => 'EC'],
+        'IIN'   => ['label' => 'Internal Communication - Incoming',         'series' => null,   'code' => 'IIN'],
+        'IC'    => ['label' => 'Internal Communication - Outgoing',         'series' => '3334', 'code' => 'IC'],
+        'OO'    => ['label' => 'Office Order',                              'series' => '3336', 'code' => '00'],
+        'MOM'   => ['label' => 'MOM',                                       'series' => '3337', 'code' => 'MOM'],
+        'REP'   => ['label' => 'Reports (Monthly / Quarterly / Annual)',    'series' => '3338', 'code' => 'REP'],
+        'TRANS' => ['label' => 'Transmittal',                               'series' => '3339', 'code' => 'TRANS'],
+    ];
+
+    public static function isValidCategory($category) {
+        return isset(self::CATEGORIES[$category]);
+    }
+
+    public static function categoryLabel($category) {
+        if (isset(self::CATEGORIES[$category])) {
+            return self::CATEGORIES[$category]['label'];
+        }
+        return ($category !== null && $category !== '') ? $category : 'Uncategorized';
+    }
+
+    // Coded (outgoing) categories are written from public/Template.docx
+    public static function usesTemplate($category) {
+        return isset(self::CATEGORIES[$category]) && self::CATEGORIES[$category]['series'] !== null;
+    }
+
+    // Letters are kept outside public/ and served through index.php?action=letter_file
+    // .docx = the generated letter, .json = the editor content used to reopen it
+    public static function letterPath($tracking_id, $ext = 'docx') {
+        if (!preg_match('/^[A-Za-z0-9-]+$/', (string) $tracking_id) || !in_array($ext, ['docx', 'json'], true)) {
+            throw new Exception("Invalid letter path.");
+        }
+        return dirname(__DIR__, 2) . '/storage/letters/' . $tracking_id . '.' . $ext;
+    }
+
+    // SQL list of category keys for "category IN (...)" filters (built from constants only)
+    private static function categorySqlList() {
+        return "'" . implode("', '", array_keys(self::CATEGORIES)) . "'";
+    }
 
     public function __construct() {
         $database = new Database();
@@ -14,10 +59,10 @@ class Document {
     }
 
     public function getAll() {
-        // 🔥 CICS ONLY: Filter to only CICS documents with IC/EC categories
+        // 🔥 CICS ONLY: Filter to only CICS documents with known categories
         $query = "SELECT d.*, u.name AS creator_name FROM documents d
                   LEFT JOIN users u ON u.id = d.creator_id
-                  WHERE d.category IN ('IC', 'EC')
+                  WHERE d.category IN (" . self::categorySqlList() . ")
                   AND (d.origin = 'CICS' OR d.current_location = 'CICS' OR d.target_department = 'CICS')
                   ORDER BY d.created_at DESC";
         $stmt = $this->conn->prepare($query);
@@ -63,30 +108,105 @@ class Document {
         // 🔥 CICS ONLY: Force target department to CICS
         $target_department = 'CICS';
         
-        // 🔥 CICS ONLY: Validate category is IC/EC only
-        if (!in_array($category, ['IC', 'EC'])) {
-            throw new \Exception("Invalid category. Only 'IC' (Internal Communication) and 'EC' (External Communication) are allowed.");
+        // 🔥 CICS ONLY: Validate category
+        if (!self::isValidCategory($category)) {
+            throw new \Exception("Invalid category selected.");
         }
-        
-        $year = date('y');  
-        $month = date('m'); 
-        $prefix = 'IC' . $year . $month; 
-        
-        $query = "SELECT tracking_id FROM documents WHERE tracking_id LIKE :prefix ORDER BY tracking_id DESC LIMIT 1";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindValue(':prefix', $prefix . '%');
-        $stmt->execute();
-        $last_id = $stmt->fetchColumn();
-        
-        if ($last_id) {
-            $last_number = (int) substr($last_id, 6);
-            $next_number = $last_number + 1;
-        } else {
-            $next_number = 1;
+
+        // Build the prefix, e.g. CICS-3330-EC-2026- or CICS-EIN-2026-
+        $cat = self::CATEGORIES[$category];
+        $prefix = 'CICS-' . ($cat['series'] !== null ? $cat['series'] . '-' : '') . $cat['code'] . '-' . date('Y') . '-';
+        // Matches only real codes (prefix + digits), not archived "-VOID-n" copies
+        $codePattern = '^' . $prefix . '[0-9]+$';
+
+        // Number reuse + insert must succeed or fail together
+        $ownTransaction = !$this->conn->inTransaction();
+        if ($ownTransaction) { $this->conn->beginTransaction(); }
+
+        try {
+            // 1. Reuse the lowest code freed up by a voided letter (same category & year)
+            $stmt = $this->conn->prepare("SELECT tracking_id FROM documents WHERE tracking_id REGEXP :pattern AND status = 'Void'
+                                          ORDER BY LENGTH(tracking_id), tracking_id LIMIT 1 FOR UPDATE");
+            $stmt->bindValue(':pattern', $codePattern);
+            $stmt->execute();
+            $voided_id = $stmt->fetchColumn();
+
+            if ($voided_id) {
+                $this->archiveVoided($voided_id);
+                $id = $voided_id;
+            } else {
+                // 2. Otherwise take the next number (sequence restarts every year per category; LENGTH first so 1000 sorts after 999)
+                $stmt = $this->conn->prepare("SELECT tracking_id FROM documents WHERE tracking_id REGEXP :pattern
+                                              ORDER BY LENGTH(tracking_id) DESC, tracking_id DESC LIMIT 1");
+                $stmt->bindValue(':pattern', $codePattern);
+                $stmt->execute();
+                $last_id = $stmt->fetchColumn();
+
+                $next_number = $last_id ? (int) substr($last_id, strlen($prefix)) + 1 : 1;
+                $id = $prefix . str_pad($next_number, 3, '0', STR_PAD_LEFT);
+            }
+
+            $this->insertDocument($id, $title, $category, $origin, $target_department, $file_path, $creator_id);
+
+            // Add history log with clear intent
+            $this->addHistory($id, $origin, "Document created. Target destination: " . $target_department);
+
+            if ($ownTransaction) { $this->conn->commit(); }
+        } catch (\Exception $e) {
+            if ($ownTransaction) {
+                $this->conn->rollBack();
+                // Put back any letter files moved by archiveVoided()
+                foreach ($this->movedLetters as [$from, $to]) { @rename($to, $from); }
+            }
+            throw $e;
+        } finally {
+            $this->movedLetters = [];
         }
-        
-        $id = $prefix . str_pad($next_number, 4, '0', STR_PAD_LEFT);
-        
+
+        return $id;
+    }
+
+    // Move a voided document to "<id>-VOID-<n>" (with its history & notifications) so its code can be reused
+    private function archiveVoided($id) {
+        $n = 1;
+        $check = $this->conn->prepare("SELECT COUNT(*) FROM documents WHERE tracking_id = :id");
+        do {
+            $archive_id = $id . '-VOID-' . $n++;
+            $check->execute([':id' => $archive_id]);
+        } while ($check->fetchColumn() > 0);
+
+        // Copy the row under the archive ID (document_history FK blocks renaming in place)
+        $stmt = $this->conn->prepare("SELECT * FROM documents WHERE tracking_id = :id");
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $row['tracking_id'] = $archive_id;
+
+        $columns = array_keys($row);
+        $this->conn->prepare("INSERT INTO documents (`" . implode('`, `', $columns) . "`) VALUES (:" . implode(', :', $columns) . ")")
+                   ->execute(array_combine(array_map(fn($c) => ':' . $c, $columns), array_values($row)));
+
+        $params = [':new' => $archive_id, ':old' => $id];
+        $this->conn->prepare("UPDATE document_history SET tracking_id = :new WHERE tracking_id = :old")->execute($params);
+        $this->conn->prepare("UPDATE notifications SET tracking_id = :new WHERE tracking_id = :old")->execute($params);
+        $this->conn->prepare("DELETE FROM documents WHERE tracking_id = :old")->execute([':old' => $id]);
+
+        $this->conn->prepare("INSERT INTO document_history (tracking_id, location, action) VALUES (:id, :location, :action)")
+                   ->execute([':id' => $archive_id, ':location' => $row['current_location'], ':action' => "Tracking code $id released for reuse. This voided document is now $archive_id."]);
+
+        // The voided letter files follow their document, so the reused code starts from a fresh template
+        foreach (['docx', 'json'] as $ext) {
+            $from = self::letterPath($id, $ext);
+            $to = self::letterPath($archive_id, $ext);
+            if (file_exists($from)) {
+                if (!rename($from, $to)) {
+                    throw new Exception("Could not archive the letter file for $id.");
+                }
+                $this->movedLetters[] = [$from, $to];
+            }
+        }
+    }
+
+    private function insertDocument($id, $title, $category, $origin, $target_department, $file_path, $creator_id) {
         // 🔥 UPDATED: Now inserting the category as well!
         $query = "INSERT INTO documents (tracking_id, creator_id, title, category, origin, target_department, current_location, status, file_path) 
                   VALUES (:id, :creator_id, :title, :category, :origin, :target_department, :current_location, 'Routing', :file_path)";
@@ -108,11 +228,6 @@ class Document {
             $error = $stmt->errorInfo();
             throw new \Exception("Database failed to create document! SQL Error: " . $error[2]);
         }
-
-        // Add history log with clear intent
-        $this->addHistory($id, $origin, "Document created. Target destination: " . $target_department);
-
-        return $id;
     }
 
     // NEW: Fetch the specific email of the user who created the document
@@ -159,14 +274,14 @@ class Document {
     public function getPaginated($page = 1, $limit = 10) {
         $offset = ($page - 1) * $limit;
         
-        // 🔥 CICS ONLY: Filter to CICS + IC/EC
+        // 🔥 CICS ONLY: Filter to CICS + known categories
         $stmt = $this->conn->query("SELECT COUNT(*) FROM documents 
-                                    WHERE category IN ('IC', 'EC')
+                                    WHERE category IN (" . self::categorySqlList() . ")
                                     AND (origin = 'CICS' OR current_location = 'CICS' OR target_department = 'CICS')");
         $total = $stmt->fetchColumn();
         
         $query = "SELECT * FROM documents 
-                  WHERE category IN ('IC', 'EC')
+                  WHERE category IN (" . self::categorySqlList() . ")
                   AND (origin = 'CICS' OR current_location = 'CICS' OR target_department = 'CICS')
                   ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->conn->prepare($query);
@@ -229,10 +344,10 @@ class Document {
     }
 
     public function getRelevantToDepartment($department) {
-        // 🔥 CICS ONLY: Filter to CICS + IC/EC
+        // 🔥 CICS ONLY: Filter to CICS + known categories
         $query = "SELECT d.*, u.name AS creator_name FROM documents d
                   LEFT JOIN users u ON u.id = d.creator_id
-                  WHERE d.category IN ('IC', 'EC')
+                  WHERE d.category IN (" . self::categorySqlList() . ")
                   AND (d.origin = 'CICS' OR d.current_location = 'CICS' OR d.target_department = 'CICS')
                   ORDER BY d.created_at DESC";
                   
@@ -247,7 +362,7 @@ class Document {
     }
 
     public function search($keyword) {
-        // 🔥 CICS ONLY: Restrict search to CICS + IC/EC
+        // 🔥 CICS ONLY: Restrict search to CICS + known categories
         $query = "SELECT * FROM documents 
                   WHERE (tracking_id LIKE :keyword 
                   OR title LIKE :keyword 
@@ -255,7 +370,7 @@ class Document {
                   OR target_department LIKE :keyword 
                   OR current_location LIKE :keyword
                   OR category LIKE :keyword)
-                  AND category IN ('IC', 'EC')
+                  AND category IN (" . self::categorySqlList() . ")
                   AND (origin = 'CICS' OR current_location = 'CICS' OR target_department = 'CICS')
                   ORDER BY created_at DESC LIMIT 10";
         $stmt = $this->conn->prepare($query);
@@ -273,9 +388,9 @@ class Document {
     public function getPaginatedForDepartment($department, $page = 1, $limit = 10, $filters = []) {
         $offset = ($page - 1) * $limit;
         
-        // 🔥 CICS ONLY: Always filter to CICS + IC/EC
+        // 🔥 CICS ONLY: Always filter to CICS + known categories
         $whereClause = "WHERE (d.origin = 'CICS' OR d.current_location = 'CICS' OR d.target_department = 'CICS')
-                        AND d.category IN ('IC', 'EC')";
+                        AND d.category IN (" . self::categorySqlList() . ")";
         $params = [];
         
         // Apply search filter
@@ -339,9 +454,9 @@ class Document {
     public function getPaginatedWithFilters($page = 1, $limit = 10, $filters = []) {
         $offset = ($page - 1) * $limit;
         
-        // 🔥 CICS ONLY: Always filter to CICS + IC/EC
+        // 🔥 CICS ONLY: Always filter to CICS + known categories
         $whereClause = "WHERE (d.origin = 'CICS' OR d.current_location = 'CICS' OR d.target_department = 'CICS')
-                        AND d.category IN ('IC', 'EC')";
+                        AND d.category IN (" . self::categorySqlList() . ")";
         $params = [];
         
         // Apply search filter

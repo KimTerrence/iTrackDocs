@@ -1,0 +1,17 @@
+/* Letter pages shared by the editor and the preview.
+   Legal paper (8.5in x 13in) at 96px/in. Every sheet repeats the template's letterhead, the tracking
+   code and the footer (Word header/footer in the .docx). LetterPage.layout() adds the sheets. */
+.letter-stack { position: relative; width: 816px; margin: 0 auto; color: #000; }
+.letter-sheet { position: absolute; left: 0; width: 816px; height: 1248px; overflow: hidden; background: #fff; box-shadow: 0 4px 24px rgba(15, 23, 42, .12); }
+.letter-headimg, .letter-footimg { position: absolute; left: 0; width: 816px; height: auto; display: block; }
+.letter-headimg { top: 0; }
+.letter-footimg { top: 1126px; }
+/* Mirrors CODE_BOX in the .docx: 0.94in from the top, ending at the right margin */
+.letter-code { position: absolute; top: 90px; right: 98px; height: 24px; line-height: 24px; font-family: "Times New Roman", Times, serif; font-weight: 700; font-size: 10pt; user-select: all; }
+/* Body text area: between letterhead and footer on every page; left/right margins from the template */
+.letter-body { position: absolute; z-index: 2; top: 186px; left: 95px; right: 98px; font-family: "Times New Roman", Times, serif; font-size: 12pt; }
+.letter-quill { border: 0 !important; font-family: inherit; font-size: inherit; }
+/* Word's "1.08 multiple" spacing on Times New Roman (1.15em single) is about 1.24em */
+.letter-quill .ql-editor { padding: 0; line-height: 1.24; overflow: visible; }
+.letter-quill .ql-editor p, .letter-quill .ql-editor li { margin: 0; }
+.letter-quill .ql-editor.ql-blank::before { left: 0; right: 0; font-style: italic; color: #94a3b8; }

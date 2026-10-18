@@ -76,7 +76,7 @@ function getStatusBadge($status) {
     </script>
 
     <div class="bg-white dark:bg-slate-900 ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl overflow-hidden shadow-sm flex flex-col flex-1">
-        <div class="flex-1 overflow-y-auto">
+        <div class="flex-1 overflow-auto [contain:paint]">
             <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
                 <thead class="bg-slate-50/80 dark:bg-slate-800/50 sticky top-0 z-10 backdrop-blur-md">
                     <tr>

@@ -41,6 +41,7 @@
             $latest = end($doc['history']);
             $recentActivity[] = [
                 'id' => $id,
+                'void' => $status === 'void',
                 'title' => $doc['title'],
                 'action' => $latest['action'],
                 'date' => $latest['date'],
@@ -50,6 +51,7 @@
             // Fallback if history isn't loaded: show document creation/current state
             $recentActivity[] = [
                 'id' => $id,
+                'void' => $status === 'void',
                 'title' => $doc['title'],
                 'action' => 'Document at ' . $doc['current_location'],
                 'date' => date('M d, Y h:i A', strtotime($doc['created_at'] ?? 'now')),
@@ -136,13 +138,13 @@
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
-        <div class="xl:col-span-2 bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl overflow-hidden flex flex-col">
+        <div class="xl:col-span-2 min-w-0 bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl overflow-hidden flex flex-col">
             <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
                 <h2 class="text-lg font-bold text-slate-900 dark:text-white">Recent Documents</h2>
                 <a href="index.php?action=list" class="text-sm font-semibold text-brand-600 hover:text-brand-500 transition-colors">View All Directory &rarr;</a>
             </div>
             
-            <div class="overflow-x-auto flex-1">
+            <div class="overflow-x-auto flex-1 [contain:paint]">
                 <table class="min-w-full divide-y divide-slate-100 dark:divide-slate-800/60">
                     <thead class="bg-slate-50 dark:bg-slate-800/50">
                         <tr>
@@ -163,16 +165,20 @@
                             </tr>
                         <?php else: ?>
                             <?php foreach (array_slice($documents, 0, 6) as $id => $doc): ?>
+                                <?php $rowVoid = strtolower($doc['status'] ?? '') === 'void'; ?>
                                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group">
                                     <td class="whitespace-nowrap py-4 pl-6 pr-3 text-sm">
-                                        <div class="flex items-center gap-2">                                       
-                                            <span class="font-mono font-bold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors"><?= htmlspecialchars($id) ?></span>                                        
+                                        <div class="flex items-center gap-2">
+                                            <a href="index.php?action=view&tracking_id=<?= urlencode($id) ?>" title="View document"
+                                               class="font-mono font-bold hover:underline underline-offset-2 transition-colors <?= $rowVoid
+                                                   ? 'text-red-600 dark:text-red-400 line-through decoration-2'
+                                                   : 'text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 hover:text-brand-600' ?>"><?= htmlspecialchars($id) ?></a>
                                              <?php if (!empty($doc['file_path'])): ?>
                                                 <svg class="w-4 h-4 text-brand-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                                             <?php endif; ?></div>
                                     </td>
                                     <td class="px-3 py-4">
-                                        <p class="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[250px]"><?= htmlspecialchars($doc['title']) ?></p>
+                                        <p class="text-sm font-bold truncate max-w-[250px] <?= $rowVoid ? 'text-red-600 dark:text-red-400 line-through decoration-2' : 'text-slate-900 dark:text-white' ?>"><?= htmlspecialchars($doc['title']) ?></p>
                                         <div class="flex items-center text-xs text-slate-500 mt-0.5 gap-2">
                                             <span class="text-brand-600 dark:text-brand-400 font-medium truncate max-w-[150px]">At: <?= htmlspecialchars($doc['current_location']) ?></span>
                                         </div>
@@ -201,7 +207,7 @@
             </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 flex flex-col">
+        <div class="min-w-0 bg-white dark:bg-slate-900 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 rounded-3xl p-6 flex flex-col">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-lg font-bold text-slate-900 dark:text-white">System Activity</h2>
                 <span class="relative flex h-3 w-3">
@@ -229,7 +235,7 @@
                                     <?= htmlspecialchars($activity['action']) ?>
                                 </p>
                                 <div class="flex items-center gap-2 mt-1">
-                                    <a href="index.php?action=view&tracking_id=<?= urlencode($activity['id']) ?>" class="font-mono text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline">
+                                    <a href="index.php?action=view&tracking_id=<?= urlencode($activity['id']) ?>" class="font-mono text-xs font-bold hover:underline <?= !empty($activity['void']) ? 'text-red-600 dark:text-red-400 line-through decoration-2' : 'text-brand-600 dark:text-brand-400' ?>">
                                         <?= htmlspecialchars($activity['id']) ?>
                                     </a>
                                     <span class="text-xs text-slate-400">&bull;</span>

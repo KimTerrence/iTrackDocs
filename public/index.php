@@ -37,6 +37,18 @@ if ($action === 'home') {
     (new \Controllers\DocumentController())->uploadAttachment();
 } elseif ($action === 'view' && $tracking_id) {
     (new \Controllers\DocumentController())->view($tracking_id);
+} elseif ($action === 'stamp_attachment' && $tracking_id) {
+    (new \Controllers\DocumentController())->stampAttachment($tracking_id);
+} elseif ($action === 'save_stamped' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    (new \Controllers\DocumentController())->saveStamped();
+} elseif ($action === 'edit_letter' && $tracking_id) {
+    (new \Controllers\DocumentController())->editLetter($tracking_id);
+} elseif ($action === 'letter_preview' && $tracking_id) {
+    (new \Controllers\DocumentController())->letterPreview($tracking_id);
+} elseif ($action === 'letter_file' && $tracking_id) {
+    (new \Controllers\DocumentController())->letterFile($tracking_id);
+} elseif ($action === 'save_letter' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    (new \Controllers\DocumentController())->saveLetter();
 } elseif ($action === 'users') {
     (new \Controllers\UserController())->list();
 } elseif ($action === 'add_user') {
@@ -62,10 +74,6 @@ if ($action === 'home') {
     } else {
         die("System Error: No Tracking ID was provided in the URL.");
     }
-} elseif ($action === 'mark_received' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    (new \Controllers\DocumentController())->markReceived();
-} elseif ($action === 'mark_received_dashboard' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    (new \Controllers\DocumentController())->markReceivedFromDashboard();
 } elseif ($action === 'mark_void' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     (new \Controllers\DocumentController())->markVoid();
 } elseif ($action === 'logs') {

@@ -18,6 +18,18 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+    <style>
+        /* Mobile sidebar drawer: opened by the hamburger button, floats over the page under the navbar */
+        @media (max-width: 1023.98px) {
+            aside.sidebar-open {
+                display: flex !important; position: fixed !important; top: 73px; left: 0; bottom: 0;
+                height: auto !important; width: 18rem; max-width: 85vw; z-index: 40;
+                background: #fff; box-shadow: 0 10px 40px rgba(15, 23, 42, .35);
+            }
+            .dark aside.sidebar-open { background: #18181b; }
+        }
+    </style>
+
     <script>
         // Custom Brand Colors
         tailwind.config = { 
@@ -41,8 +53,9 @@
         
         <div class="flex w-full flex-1">
             <?php require __DIR__ . '/partials/sidebar.php'; ?>
-            
-            <main class="flex-1 w-full overflow-hidden p-6 lg:p-10">
+            <div id="sidebar-backdrop" class="hidden lg:hidden fixed inset-x-0 bottom-0 top-[73px] z-30 bg-slate-900/50 backdrop-blur-sm print:hidden"></div>
+
+            <main class="flex-1 w-full min-w-0 overflow-hidden p-4 sm:p-6 lg:p-10">
                 <?= $content ?? '' ?>
             </main>
         </div>
@@ -127,33 +140,41 @@
         });
 
         // === MOBILE HAMBURGER MENU ===
+        // Below 1024px the sidebar slides over the page as a drawer (see .sidebar-open in <head>)
         var mobileBtn = document.getElementById('mobile-menu-btn');
         var sidebar = document.querySelector('aside');
+        var backdrop = document.getElementById('sidebar-backdrop');
         if (mobileBtn && sidebar) {
+            var setSidebar = function(open) {
+                sidebar.classList.toggle('sidebar-open', open);
+                if (backdrop) backdrop.classList.toggle('hidden', !open);
+                document.body.classList.toggle('overflow-hidden', open);
+                document.getElementById('menu-hamburger-icon')?.classList.toggle('hidden', open);
+                document.getElementById('menu-close-icon')?.classList.toggle('hidden', !open);
+            };
             mobileBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                sidebar.classList.toggle('hidden');
-                sidebar.classList.toggle('flex');
-                sidebar.classList.toggle('fixed');
-                sidebar.classList.toggle('inset-0');
-                sidebar.classList.toggle('z-40');
-                sidebar.classList.toggle('w-72');
-                sidebar.classList.toggle('h-full');
-                document.getElementById('menu-hamburger-icon')?.classList.toggle('hidden');
-                document.getElementById('menu-close-icon')?.classList.toggle('hidden');
+                setSidebar(!sidebar.classList.contains('sidebar-open'));
             });
-            
-            // Close sidebar when clicking outside on mobile
-            document.addEventListener('click', function(e) {
-                if (window.innerWidth < 1024 && !sidebar.classList.contains('hidden')) {
-                    if (!sidebar.contains(e.target) && e.target !== mobileBtn && !mobileBtn.contains(e.target)) {
-                        sidebar.classList.add('hidden');
-                        sidebar.classList.remove('flex', 'fixed', 'inset-0', 'z-40', 'w-72', 'h-full');
-                        document.getElementById('menu-hamburger-icon')?.classList.remove('hidden');
-                        document.getElementById('menu-close-icon')?.classList.add('hidden');
-                    }
-                }
+            if (backdrop) backdrop.addEventListener('click', function() { setSidebar(false); });
+            document.addEventListener('keydown', function(e) { if (e.key === 'Escape') setSidebar(false); });
+            window.addEventListener('resize', function() { if (window.innerWidth >= 1024) setSidebar(false); });
+        }
+
+        // Logged out there is no sidebar: the button opens the page links instead
+        var publicMenu = document.getElementById('public-mobile-menu');
+        if (mobileBtn && !sidebar && publicMenu) {
+            var setPublicMenu = function(open) {
+                publicMenu.classList.toggle('hidden', !open);
+                document.getElementById('menu-hamburger-icon')?.classList.toggle('hidden', open);
+                document.getElementById('menu-close-icon')?.classList.toggle('hidden', !open);
+            };
+            mobileBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                setPublicMenu(publicMenu.classList.contains('hidden'));
             });
+            publicMenu.querySelectorAll('a').forEach(function(a) { a.addEventListener('click', function() { setPublicMenu(false); }); });
+            document.addEventListener('click', function(e) { if (!publicMenu.contains(e.target)) setPublicMenu(false); });
         }
 
         // === USER MENU DROPDOWN ===
@@ -354,6 +375,17 @@
         document.querySelectorAll('#user-menu-dropdown, #quick-actions-menu, #notif-menu').forEach(function(el) {
             if (el) {
                 el.addEventListener('click', function(e) { e.stopPropagation(); });
+            }
+        });
+
+        // File inputs with data-max-bytes: refuse oversized files before uploading (the server checks again)
+        document.addEventListener('change', function(e) {
+            var input = e.target;
+            if (!input.matches || !input.matches('input[type="file"][data-max-bytes]') || !input.files.length) return;
+            var file = input.files[0];
+            if (file.size > Number(input.dataset.maxBytes)) {
+                alert('"' + file.name + '" is ' + (file.size / 1048576).toFixed(1) + 'MB. The maximum file size is ' + Math.round(input.dataset.maxBytes / 1048576) + 'MB.');
+                input.value = '';
             }
         });
     </script>
