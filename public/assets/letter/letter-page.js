@@ -24,6 +24,32 @@ window.LetterPage = (function () {
         Quill.register(Size, true);
     }
 
+    // Public scan page for a tracking code (same link as the document's printed QR)
+    function scanUrl(code) {
+        return window.location.origin + window.location.pathname + '?action=scan&tracking_id=' + encodeURIComponent(code);
+    }
+
+    // QR code as a canvas, `scale` px per module, with a 2-module white border (needs qrcode-generator)
+    function qrCanvas(text, scale) {
+        const qr = qrcode(0, 'L');
+        qr.addData(text);
+        qr.make();
+        const quiet = 2;
+        const count = qr.getModuleCount();
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = (count + quiet * 2) * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#000';
+        for (let r = 0; r < count; r++) {
+            for (let c = 0; c < count; c++) {
+                if (qr.isDark(r, c)) ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+            }
+        }
+        return canvas;
+    }
+
     async function loadTemplate(url) {
         const res = await fetch(url || 'Template.docx', { cache: 'no-store' });
         if (!res.ok) throw new Error('Template.docx not found (' + res.status + ')');
@@ -75,6 +101,14 @@ window.LetterPage = (function () {
         code.className = 'letter-code';
         code.textContent = stack.dataset.code || '';
         sheet.appendChild(code);
+        if (stack.dataset.code && typeof qrcode === 'function') {
+            if (!stack._letterQr) stack._letterQr = qrCanvas(scanUrl(stack.dataset.code), 8).toDataURL('image/png');
+            const qr = document.createElement('img');
+            qr.className = 'letter-qr';
+            qr.alt = 'Tracking QR';
+            qr.src = stack._letterQr;
+            sheet.appendChild(qr);
+        }
         if (images.footer) {
             const img = document.createElement('img');
             img.className = 'letter-footimg';
@@ -150,5 +184,5 @@ window.LetterPage = (function () {
         return pages;
     }
 
-    return { W_NS, SIZES, PAGE, MARGIN_TWIPS, hasDrawing, registerSizes, loadTemplate, showTemplateImages, layout };
+    return { W_NS, SIZES, PAGE, MARGIN_TWIPS, hasDrawing, registerSizes, scanUrl, qrCanvas, loadTemplate, showTemplateImages, layout };
 })();

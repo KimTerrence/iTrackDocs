@@ -90,6 +90,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="assets/letter/letter-page.js"></script>
 <script>
 (function () {
@@ -196,10 +197,15 @@
         return doc.documentElement.firstElementChild;
     }
 
-    // Tracking code as a borderless text box at the top-right of the page, inside the right margin,
-    // over the transparent area of the letterhead (beside "Gonzaga, Cagayan").
+    // QR + tracking code sit in the top-right corner of the page, kept this far from the paper edges (EMU)
+    const PAGE_WIDTH = 7772400; // 8.5in
+    const CORNER_MARGIN = 182880; // 0.2in
+
+    // Tracking code as a borderless text box right under the QR code at the top-right corner of the page,
+    // right-aligned with the QR modules (the inset skips the QR's white border).
     // Same structure Word writes: DrawingML text box with a VML fallback for Word 2007.
-    const CODE_BOX = { top: 860000, width: 2011680, height: 228600 }; // EMU (0.94in from top, 2.2in x 0.25in)
+    const CODE_BOX = { top: CORNER_MARGIN + 777240, width: 2011680, height: 228600, inset: 45720 }; // EMU (under the 0.85in QR, 2.2in x 0.25in, 0.05in right inset)
+    CODE_BOX.left = PAGE_WIDTH - CORNER_MARGIN - CODE_BOX.width;
 
     function trackingCodeRunXml() {
         const content = '<w:txbxContent><w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:left="0" w:firstLine="0"/><w:jc w:val="right"/></w:pPr>'
@@ -208,20 +214,43 @@
         return '<w:r><w:rPr><w:noProof/></w:rPr><mc:AlternateContent><mc:Choice Requires="wps"><w:drawing>'
             + '<wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="251661312" behindDoc="0" locked="1" layoutInCell="1" allowOverlap="1">'
             + '<wp:simplePos x="0" y="0"/>'
-            + '<wp:positionH relativeFrom="margin"><wp:align>right</wp:align></wp:positionH>'
+            + '<wp:positionH relativeFrom="page"><wp:posOffset>' + CODE_BOX.left + '</wp:posOffset></wp:positionH>'
             + '<wp:positionV relativeFrom="page"><wp:posOffset>' + CODE_BOX.top + '</wp:posOffset></wp:positionV>'
             + '<wp:extent cx="' + CODE_BOX.width + '" cy="' + CODE_BOX.height + '"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/>'
             + '<wp:docPr id="5001" name="Tracking Code"/><wp:cNvGraphicFramePr/>'
-            + '<a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp>'
+            + '<a:graphic xmlns:a="' + FRAGMENT_NS.a + '"><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp>'
             + '<wps:cNvSpPr txBox="1"/>'
             + '<wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + CODE_BOX.width + '" cy="' + CODE_BOX.height + '"/></a:xfrm>'
             + '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></wps:spPr>'
             + '<wps:txbx>' + content + '</wps:txbx>'
-            + '<wps:bodyPr rot="0" vert="horz" wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="ctr" anchorCtr="0"><a:noAutofit/></wps:bodyPr>'
+            + '<wps:bodyPr rot="0" vert="horz" wrap="square" lIns="0" tIns="0" rIns="' + CODE_BOX.inset + '" bIns="0" anchor="ctr" anchorCtr="0"><a:noAutofit/></wps:bodyPr>'
             + '</wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing></mc:Choice>'
-            + '<mc:Fallback><w:pict><v:shape id="TrackingCode" type="#_x0000_t202" filled="f" stroked="f" style="position:absolute;margin-left:0;margin-top:' + pt(CODE_BOX.top)
-            + ';width:' + pt(CODE_BOX.width) + ';height:' + pt(CODE_BOX.height) + ';z-index:251661312;mso-position-horizontal:right;mso-position-horizontal-relative:margin;mso-position-vertical-relative:page">'
-            + '<v:textbox inset="0,0,0,0">' + content + '</v:textbox></v:shape></w:pict></mc:Fallback></mc:AlternateContent></w:r>';
+            + '<mc:Fallback><w:pict><v:shape id="TrackingCode" type="#_x0000_t202" filled="f" stroked="f" style="position:absolute;margin-left:' + pt(CODE_BOX.left) + ';margin-top:' + pt(CODE_BOX.top)
+            + ';width:' + pt(CODE_BOX.width) + ';height:' + pt(CODE_BOX.height) + ';z-index:251661312;mso-position-horizontal-relative:page;mso-position-vertical-relative:page">'
+            + '<v:textbox inset="0,0,' + pt(CODE_BOX.inset) + ',0">' + content + '</v:textbox></v:shape></w:pict></mc:Fallback></mc:AlternateContent></w:r>';
+    }
+
+    // QR code (links to the public scan page) as a picture in the top-right corner of the page,
+    // above the tracking code. Its PNG is added to the package as word/media/itd-qr.png.
+    const QR_BOX = { top: CORNER_MARGIN, size: 777240 }; // EMU (0.85in square, so the code under it clears the letterhead line)
+    QR_BOX.left = PAGE_WIDTH - CORNER_MARGIN - QR_BOX.size;
+    const QR_REL = { id: 'rIdItdQr', target: 'media/itd-qr.png' };
+
+    function qrRunXml() {
+        const ext = 'cx="' + QR_BOX.size + '" cy="' + QR_BOX.size + '"';
+        return '<w:r><w:rPr><w:noProof/></w:rPr><w:drawing>'
+            + '<wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="251662336" behindDoc="0" locked="1" layoutInCell="1" allowOverlap="1">'
+            + '<wp:simplePos x="0" y="0"/>'
+            + '<wp:positionH relativeFrom="page"><wp:posOffset>' + QR_BOX.left + '</wp:posOffset></wp:positionH>'
+            + '<wp:positionV relativeFrom="page"><wp:posOffset>' + QR_BOX.top + '</wp:posOffset></wp:positionV>'
+            + '<wp:extent ' + ext + '/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/>'
+            + '<wp:docPr id="5002" name="Tracking QR"/><wp:cNvGraphicFramePr/>'
+            + '<a:graphic xmlns:a="' + FRAGMENT_NS.a + '"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+            + '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+            + '<pic:nvPicPr><pic:cNvPr id="5002" name="Tracking QR"/><pic:cNvPicPr><a:picLocks noChangeAspect="1"/></pic:cNvPicPr></pic:nvPicPr>'
+            + '<pic:blipFill><a:blip r:embed="' + QR_REL.id + '"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+            + '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext ' + ext + '/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'
+            + '</pic:pic></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r>';
     }
 
     const R_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
@@ -231,14 +260,15 @@
     const FOOTER_PART = { name: 'itd-footer.xml', relId: 'rIdItdFooter', type: 'footer', tag: 'w:ftr', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml' };
 
     // Word header/footer part holding the given runs, plus its relationships for the images it uses
-    function addHeaderFooterPart(zip, part, rootAttrs, runsXml, docRels) {
+    // (template images from docRels, plus any extra <Relationship> markup)
+    function addHeaderFooterPart(zip, part, rootAttrs, runsXml, docRels, extraRels) {
         zip.file('word/' + part.name, XML_DECL + '<' + part.tag + rootAttrs + '><w:p><w:pPr><w:spacing w:after="0"/></w:pPr>' + runsXml + '</w:p></' + part.tag + '>');
 
         const usedIds = Array.from(runsXml.matchAll(/r:embed="([^"]+)"/g)).map(m => m[1]);
         const rels = Array.from(docRels.getElementsByTagName('Relationship'))
             .filter(r => usedIds.includes(r.getAttribute('Id')))
             .map(r => '<Relationship Id="' + r.getAttribute('Id') + '" Type="' + r.getAttribute('Type') + '" Target="' + r.getAttribute('Target') + '"/>');
-        zip.file('word/_rels/' + part.name + '.rels', XML_DECL + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + rels.join('') + '</Relationships>');
+        zip.file('word/_rels/' + part.name + '.rels', XML_DECL + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + rels.join('') + (extraRels || '') + '</Relationships>');
     }
 
     // Builds the letter from Template.docx: the template's letterhead + tracking code go into a Word
@@ -262,7 +292,10 @@
             .filter(r => r.localName === 'r' && r.getElementsByTagNameNS(W_NS, 'drawing').length)
             .map(r => serializer.serializeToString(r)).join('') : '';
         const docRels = new DOMParser().parseFromString(await zip.file('word/_rels/document.xml.rels').async('string'), 'application/xml');
-        addHeaderFooterPart(zip, HEADER_PART, rootAttrs, drawingRuns(headerPara) + trackingCodeRunXml(), docRels);
+        const qrCanvas = LetterPage.qrCanvas(LetterPage.scanUrl(TRACKING_ID), 10);
+        zip.file('word/' + QR_REL.target, await new Promise(resolve => qrCanvas.toBlob(resolve, 'image/png')));
+        addHeaderFooterPart(zip, HEADER_PART, rootAttrs, drawingRuns(headerPara) + trackingCodeRunXml() + qrRunXml(), docRels,
+            '<Relationship Id="' + QR_REL.id + '" Type="' + REL_TYPE + 'image" Target="' + QR_REL.target + '"/>');
         const hasFooter = !!footerPara;
         if (hasFooter) addHeaderFooterPart(zip, FOOTER_PART, rootAttrs, drawingRuns(footerPara), docRels);
 

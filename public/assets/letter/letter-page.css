@@ -6,8 +6,10 @@
 .letter-headimg, .letter-footimg { position: absolute; left: 0; width: 816px; height: auto; display: block; }
 .letter-headimg { top: 0; }
 .letter-footimg { top: 1126px; }
-/* Mirrors CODE_BOX in the .docx: 0.94in from the top, ending at the right margin */
-.letter-code { position: absolute; top: 90px; right: 98px; height: 24px; line-height: 24px; font-family: "Times New Roman", Times, serif; font-weight: 700; font-size: 10pt; user-select: all; }
+/* Mirrors CODE_BOX in the .docx: right under the QR (1.05in from the top), right-aligned with its modules */
+.letter-code { position: absolute; top: 100.8px; right: 23.6px; height: 24px; line-height: 24px; font-family: "Times New Roman", Times, serif; font-weight: 700; font-size: 10pt; user-select: all; }
+/* Mirrors QR_BOX in the .docx: top-right corner, 0.2in from the paper edges, 0.85in square */
+.letter-qr { position: absolute; z-index: 1; top: 19.2px; right: 19.2px; width: 81.6px; height: 81.6px; image-rendering: pixelated; }
 /* Body text area: between letterhead and footer on every page; left/right margins from the template */
 .letter-body { position: absolute; z-index: 2; top: 186px; left: 95px; right: 98px; font-family: "Times New Roman", Times, serif; font-size: 12pt; }
 .letter-quill { border: 0 !important; font-family: inherit; font-size: inherit; }
